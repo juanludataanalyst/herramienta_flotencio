@@ -412,12 +412,12 @@ df_results = pd.DataFrame(results)
 
 # Guardar resultados
 df_results.to_csv("spanish_stocks_summary.csv", index=False)
-st.write("Resumen guardado en 'spanish_stocks_summary.csv'")
+print("Resumen guardado en 'spanish_stocks_summary.csv'")
 
 for ticker, (history, _, _, _) in all_histories.items():
     if history is not None:
         history.to_csv(f"historical_prices_{ticker}.csv")
-st.write("Precios históricos guardados en archivos individuales")
+print("Precios históricos guardados en archivos individuales")
 
 # Interfaz de Streamlit
 st.title("Herramienta de Inversión - Valores Españoles")
@@ -555,18 +555,18 @@ if data and history is not None:
             line=dict(color="blue")
         ))
         if max_points:
-            max_dates, max_values = zip(*max_points)
+            max_dates_viz, max_values = zip(*max_points)
             fig.add_trace(go.Scatter(
-                x=max_dates,
+                x=max_dates_viz,
                 y=max_values,
                 name="Máximos Anuales",
                 mode="markers",
                 marker=dict(color="red", size=10)
             ))
         if min_points:
-            min_dates, min_values = zip(*min_points)
+            min_dates_viz, min_values = zip(*min_points)
             fig.add_trace(go.Scatter(
-                x=min_dates,
+                x=min_dates_viz,
                 y=min_values,
                 name="Mínimos Anuales",
                 mode="markers",
@@ -574,22 +574,7 @@ if data and history is not None:
             ))
         return fig
     
-    # Selector de metodología
-    methodology = st.selectbox("Seleccionar Metodología de Canal", 
-                              ["Metodología 1: Regresión de 3 Puntos", 
-                               "Metodología 2: Canal Cronológico Adaptativo",
-                               "Metodología 3: Canal Adaptativo que Contiene Todos los Precios"])
-    
-    if methodology == "Metodología 1: Regresión de 3 Puntos":
-        st.subheader("Metodología 1: Canal de Regresión de 3 Puntos")
-        st.write("Esta metodología utiliza una regresión lineal sobre los 3 máximos y 3 mínimos anuales para crear un canal de precios. El canal muestra la tendencia y rango de precios más representativo.")
-    elif methodology == "Metodología 2: Canal Cronológico Adaptativo":
-        st.subheader("Metodología 2: Canal Cronológico Adaptativo")
-        st.write("Esta metodología conecta cronológicamente los puntos de máximos y mínimos usando sus fechas reales. Comienza uniendo el primer año (2022) con el segundo (2023). Si el tercer año (2024) queda fuera de esas líneas, entonces conecta directamente el primer año con el tercero.")
-    else:
-        st.subheader("Metodología 3: Canal Adaptativo que Contiene Todos los Precios")
-        st.write("Esta metodología comienza uniendo los dos máximos y mínimos más extremos proyectados al 30 de junio, pero expande automáticamente el canal incluyendo más puntos hasta que todos los precios históricos estén contenidos dentro del canal.")
-    
+    # Definir funciones primero
     def calculate_3_point_regression_channel():
         if len(max_points) == 3 and len(min_points) == 3:
             # Usar todos los puntos de máximos y mínimos
@@ -833,16 +818,22 @@ if data and history is not None:
         
         return None, None, None, None, None, None, None, None, None
     
-    # Calcular el canal según la metodología seleccionada
-    if methodology == "Metodología 1: Regresión de 3 Puntos":
-        max_canal, min_canal, canal_dates, slope, intercept, max_offset, min_offset = calculate_3_point_regression_channel()
-        channel_data = {"type": "regression", "slope": slope, "intercept": intercept, "max_offset": max_offset, "min_offset": min_offset}
-    elif methodology == "Metodología 2: Canal Cronológico Adaptativo":
+    # Selector de metodología primero
+    methodology = st.selectbox("Seleccionar Metodología de Canal", 
+                              ["Metodología 1: Canal Cronológico Adaptativo", 
+                               "Metodología 2: Canal Adaptativo que Contiene Todos los Precios",
+                               "Metodología 3: Regresión de 3 Puntos"])
+    
+    # Calcular y mostrar el gráfico según metodología
+    if methodology == "Metodología 1: Canal Cronológico Adaptativo":
         max_canal, min_canal, canal_dates, max_connection, min_connection, max_slope, min_slope, max_type, min_type = calculate_chronological_adaptive_channel()
         channel_data = {"type": "chronological", "max_connection": max_connection, "min_connection": min_connection, "max_slope": max_slope, "min_slope": min_slope, "max_type": max_type, "min_type": min_type}
-    else:  # Metodología 3: Canal Adaptativo que Contiene Todos los Precios
+    elif methodology == "Metodología 2: Canal Adaptativo que Contiene Todos los Precios":
         max_canal, min_canal, canal_dates, used_max, used_min, max_slope, min_slope, all_max_points, all_min_points = calculate_adaptive_channel_with_projection()
         channel_data = {"type": "adaptive", "used_max": used_max, "used_min": used_min, "max_slope": max_slope, "min_slope": min_slope, "all_max_points": all_max_points, "all_min_points": all_min_points}
+    else:  # Metodología 3: Regresión de 3 Puntos
+        max_canal, min_canal, canal_dates, slope, intercept, max_offset, min_offset = calculate_3_point_regression_channel()
+        channel_data = {"type": "regression", "slope": slope, "intercept": intercept, "max_offset": max_offset, "min_offset": min_offset}
     
     fig_main = create_base_chart()
     
@@ -862,21 +853,12 @@ if data and history is not None:
         ))
         
         # Añadir elementos específicos según metodología
-        if methodology == "Metodología 1: Regresión de 3 Puntos":
-            # Añadir línea de regresión central
-            central_line = [channel_data["slope"] * x + channel_data["intercept"] for x in [pd.Timestamp(d).timestamp() for d in canal_dates]]
-            fig_main.add_trace(go.Scatter(
-                x=canal_dates,
-                y=central_line,
-                name="Línea de Regresión",
-                line=dict(color="blue", dash="dot", width=1)
-            ))
-        elif methodology == "Metodología 2: Canal Cronológico Adaptativo":
+        if methodology == "Metodología 1: Canal Cronológico Adaptativo":
             # Añadir conexiones cronológicas
             if channel_data["max_connection"]:
-                max_dates, max_values = zip(*channel_data["max_connection"])
+                max_dates_conn, max_values = zip(*channel_data["max_connection"])
                 fig_main.add_trace(go.Scatter(
-                    x=max_dates,
+                    x=max_dates_conn,
                     y=max_values,
                     name=f"Máximos Cronológicos ({channel_data['max_type']})",
                     mode="markers+lines",
@@ -884,16 +866,16 @@ if data and history is not None:
                     line=dict(color="red", width=2)
                 ))
             if channel_data["min_connection"]:
-                min_dates, min_values = zip(*channel_data["min_connection"])
+                min_dates_conn, min_values = zip(*channel_data["min_connection"])
                 fig_main.add_trace(go.Scatter(
-                    x=min_dates,
+                    x=min_dates_conn,
                     y=min_values,
                     name=f"Mínimos Cronológicos ({channel_data['min_type']})",
                     mode="markers+lines",
                     marker=dict(color="lime", size=12, symbol="circle"),
                     line=dict(color="green", width=2)
                 ))
-        else:  # Metodología 3
+        elif methodology == "Metodología 2: Canal Adaptativo que Contiene Todos los Precios":
             # Mostrar todos los puntos cronológicos (30 de junio)
             if channel_data["all_max_points"]:
                 all_max_dates, all_max_values = zip(*channel_data["all_max_points"])
@@ -918,25 +900,34 @@ if data and history is not None:
             
             # Mostrar puntos utilizados para el canal (conectados)
             if channel_data["used_max"]:
-                max_dates, max_values = zip(*channel_data["used_max"])
+                max_dates_used, max_values = zip(*channel_data["used_max"])
                 fig_main.add_trace(go.Scatter(
-                    x=max_dates,
+                    x=max_dates_used,
                     y=max_values,
-                    name=f"Máximos Utilizados ({len(max_dates)} puntos)",
+                    name=f"Máximos Utilizados ({len(max_dates_used)} puntos)",
                     mode="markers+lines",
                     marker=dict(color="red", size=12, symbol="diamond"),
                     line=dict(color="red", width=2)
                 ))
             if channel_data["used_min"]:
-                min_dates, min_values = zip(*channel_data["used_min"])
+                min_dates_used, min_values = zip(*channel_data["used_min"])
                 fig_main.add_trace(go.Scatter(
-                    x=min_dates,
+                    x=min_dates_used,
                     y=min_values,
-                    name=f"Mínimos Utilizados ({len(min_dates)} puntos)",
+                    name=f"Mínimos Utilizados ({len(min_dates_used)} puntos)",
                     mode="markers+lines",
                     marker=dict(color="green", size=12, symbol="diamond"),
                     line=dict(color="green", width=2)
                 ))
+        else:  # Metodología 3: Regresión de 3 Puntos
+            # Añadir línea de regresión central
+            central_line = [channel_data["slope"] * x + channel_data["intercept"] for x in [pd.Timestamp(d).timestamp() for d in canal_dates]]
+            fig_main.add_trace(go.Scatter(
+                x=canal_dates,
+                y=central_line,
+                name="Línea de Regresión",
+                line=dict(color="blue", dash="dot", width=1)
+            ))
         
         # Añadir área sombreada del canal
         fig_main.add_trace(go.Scatter(
@@ -948,112 +939,14 @@ if data and history is not None:
             name="Área del Canal",
             showlegend=False
         ))
-        
-        # Calcular precio actual del canal en fecha actual
-        current_date_num = pd.Timestamp(history.index[-1]).timestamp()
-        
-        if methodology == "Metodología 1: Regresión de 3 Puntos":
-            current_max_canal = channel_data["slope"] * current_date_num + channel_data["intercept"] + channel_data["max_offset"]
-            current_min_canal = channel_data["slope"] * current_date_num + channel_data["intercept"] + channel_data["min_offset"]
-        elif methodology == "Metodología 2: Canal Cronológico Adaptativo":
-            # Para metodología 2, calcular usando las conexiones cronológicas
-            max_intercept = channel_data["max_connection"][0][1] - channel_data["max_slope"] * pd.Timestamp(channel_data["max_connection"][0][0]).timestamp()
-            min_intercept = channel_data["min_connection"][0][1] - channel_data["min_slope"] * pd.Timestamp(channel_data["min_connection"][0][0]).timestamp()
-            current_max_canal = channel_data["max_slope"] * current_date_num + max_intercept
-            current_min_canal = channel_data["min_slope"] * current_date_num + min_intercept
-        else:  # Metodología 3
-            # Para metodología 3, calcular usando las pendientes adaptativas
-            max_intercept = channel_data["used_max"][0][1] - channel_data["max_slope"] * pd.Timestamp(channel_data["used_max"][0][0]).timestamp()
-            min_intercept = channel_data["used_min"][0][1] - channel_data["min_slope"] * pd.Timestamp(channel_data["used_min"][0][0]).timestamp()
-            current_max_canal = channel_data["max_slope"] * current_date_num + max_intercept
-            current_min_canal = channel_data["min_slope"] * current_date_num + min_intercept
-        
-        current_price = data["Precio Actual"]
-        
-        # Validar que el precio actual esté dentro del canal (para metodologías 2 y 3)
-        channel_expanded = False
-        if methodology not in ["Metodología 1: Regresión de 3 Puntos"]:
-            if current_price > current_max_canal:
-                # Expandir el canal superior para incluir el precio actual
-                current_max_canal = current_price + (current_price * 0.05)
-                # Recalcular max_canal
-                max_intercept = current_max_canal - channel_data["max_slope"] * current_date_num
-                max_canal = [channel_data["max_slope"] * x + max_intercept for x in [pd.Timestamp(d).timestamp() for d in canal_dates]]
-                channel_expanded = True
-            elif current_price < current_min_canal:
-                # Expandir el canal inferior para incluir el precio actual
-                current_min_canal = current_price - (current_price * 0.05)
-                # Recalcular min_canal
-                min_intercept = current_min_canal - channel_data["min_slope"] * current_date_num
-                min_canal = [channel_data["min_slope"] * x + min_intercept for x in [pd.Timestamp(d).timestamp() for d in canal_dates]]
-                channel_expanded = True
-        
-        # Calcular proximidad a límites del canal
-        canal_range = current_max_canal - current_min_canal
-        distance_to_max = current_max_canal - current_price
-        distance_to_min = current_price - current_min_canal
-        
-        position_in_canal = (current_price - current_min_canal) / canal_range * 100 if canal_range > 0 else 50
-        proximity_to_max = (distance_to_max / canal_range) * 100 if canal_range > 0 else 0
-        proximity_to_min = (distance_to_min / canal_range) * 100 if canal_range > 0 else 0
-        
-        # Mostrar información del canal
-        if methodology == "Metodología 1: Regresión de 3 Puntos":
-            methodology_name = "3 Puntos"
-        elif methodology == "Metodología 2: Canal Cronológico Adaptativo":
-            methodology_name = "Cronológico"
-        else:
-            methodology_name = "Adaptativo"
-        st.write(f"### Análisis del Canal {methodology_name}")
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric("Posición en Canal", f"{position_in_canal:.1f}%", 
-                     help="0% = Límite inferior, 100% = Límite superior")
-        
-        with col2:
-            st.metric("Distancia a Máximo", f"{proximity_to_max:.1f}%",
-                     help="Porcentaje del rango del canal hasta el límite superior")
-        
-        with col3:
-            st.metric("Distancia a Mínimo", f"{proximity_to_min:.1f}%",
-                     help="Porcentaje del rango del canal hasta el límite inferior")
-        
-        # Interpretación del canal
-        if channel_expanded:
-            st.info("ℹ️ El canal ha sido expandido automáticamente para incluir el precio actual")
-        
-        if position_in_canal > 80:
-            st.warning("🔴 El precio está cerca del límite superior del canal - Posible sobrecompra")
-        elif position_in_canal < 20:
-            st.success("🟢 El precio está cerca del límite inferior del canal - Posible sobreventa")
-        else:
-            st.info("🟡 El precio está en la zona media del canal")
-        
-        # Información técnica del canal
-        st.write("### Parámetros del Canal")
-        if methodology == "Metodología 1: Regresión de 3 Puntos":
-            st.write(f"**Pendiente:** {channel_data['slope']:.6f} (€/día)")
-        elif methodology == "Metodología 2: Canal Cronológico Adaptativo":
-            st.write(f"**Pendiente Superior:** {channel_data['max_slope']:.6f} (€/día)")
-            st.write(f"**Pendiente Inferior:** {channel_data['min_slope']:.6f} (€/día)")
-            st.write(f"**Conexión Máximos:** Año {channel_data['max_type']}")
-            st.write(f"**Conexión Mínimos:** Año {channel_data['min_type']}")
-        else:  # Metodología 3
-            st.write(f"**Pendiente Superior:** {channel_data['max_slope']:.6f} (€/día)")
-            st.write(f"**Pendiente Inferior:** {channel_data['min_slope']:.6f} (€/día)")
-            st.write(f"**Puntos Máximos Utilizados:** {len(channel_data['used_max'])}")
-            st.write(f"**Puntos Mínimos Utilizados:** {len(channel_data['used_min'])}")
-        st.write(f"**Límite Superior Actual:** {current_max_canal:.2f} €")
-        st.write(f"**Límite Inferior Actual:** {current_min_canal:.2f} €")
-        st.write(f"**Amplitud del Canal:** {canal_range:.2f} €")
     
-    if methodology == "Metodología 1: Regresión de 3 Puntos":
-        methodology_title = "Canal de Regresión de 3 Puntos"
-    elif methodology == "Metodología 2: Canal Cronológico Adaptativo":
+    # Título del gráfico
+    if methodology == "Metodología 1: Canal Cronológico Adaptativo":
         methodology_title = "Canal Cronológico Adaptativo"
-    else:
+    elif methodology == "Metodología 2: Canal Adaptativo que Contiene Todos los Precios":
         methodology_title = "Canal Adaptativo que Contiene Todos los Precios"
+    else:
+        methodology_title = "Canal de Regresión de 3 Puntos"
     
     fig_main.update_layout(
         title=f"{methodology_title} - {selected_ticker} ({data['Nombre']})",
@@ -1062,6 +955,20 @@ if data and history is not None:
         height=600
     )
     st.plotly_chart(fig_main, use_container_width=True)
+    
+    # Mostrar descripción de la metodología seleccionada
+    
+    # Mostrar descripción de la metodología seleccionada
+    if methodology == "Metodología 1: Canal Cronológico Adaptativo":
+        st.subheader("Metodología 1: Canal Cronológico Adaptativo")
+        st.write("Esta metodología conecta cronológicamente los puntos de máximos y mínimos usando sus fechas reales. Comienza uniendo el primer año (2022) con el segundo (2023). Si el tercer año (2024) queda fuera de esas líneas, entonces conecta directamente el primer año con el tercero.")
+    elif methodology == "Metodología 2: Canal Adaptativo que Contiene Todos los Precios":
+        st.subheader("Metodología 2: Canal Adaptativo que Contiene Todos los Precios")
+        st.write("Esta metodología comienza uniendo los dos máximos y mínimos más extremos proyectados al 30 de junio, pero expande automáticamente el canal incluyendo más puntos hasta que todos los precios históricos estén contenidos dentro del canal.")
+    else:
+        st.subheader("Metodología 3: Canal de Regresión de 3 Puntos")
+        st.write("Esta metodología utiliza una regresión lineal sobre los 3 máximos y 3 mínimos anuales para crear un canal de precios. El canal muestra la tendencia y rango de precios más representativo.")
+    
     
     # Métricas fundamentales
     st.subheader("Métricas Fundamentales")
@@ -1102,7 +1009,7 @@ if data and history is not None:
             st.metric("EV/EBITDA", f"{data['EV/EBITDA']:.2f}" if data['EV/EBITDA'] is not None else "No disponible en Yahoo Finance")
             market_cap_formatted = format_large_number(data['Cap. Mercado'])
             st.metric("Cap. Mercado", market_cap_formatted)
-    
+
     with tab2:
         st.write("### Métricas de Rentabilidad")
         col1, col2, col3, col4 = st.columns(4)
@@ -1122,7 +1029,7 @@ if data and history is not None:
         with col4:
             st.metric("Payout Ratio", f"{data['Payout Ratio (%)']:.2f}%" if data['Payout Ratio (%)'] is not None else "No disponible en Yahoo Finance")
             st.metric("FCF Yield", f"{data['FCF Yield (%)']:.2f}%" if data['FCF Yield (%)'] is not None else "No disponible en Yahoo Finance")
-    
+
     with tab3:
         st.write("### Métricas de Crecimiento")
         col1, col2 = st.columns(2)
@@ -1151,7 +1058,7 @@ if data and history is not None:
                 st.warning("⚠️ Crecimiento negativo - Revisar situación")
             else:
                 st.info("📊 Crecimiento estable")
-    
+
     with tab4:
         st.write("### Situación Financiera")
         col1, col2, col3 = st.columns(3)
