@@ -818,11 +818,8 @@ if data and history is not None:
         
         return None, None, None, None, None, None, None, None, None
     
-    # Selector de metodología primero
-    methodology = st.selectbox("Seleccionar Metodología de Canal", 
-                              ["Metodología 1: Canal Cronológico Adaptativo", 
-                               "Metodología 2: Canal Adaptativo que Contiene Todos los Precios",
-                               "Metodología 3: Regresión de 3 Puntos"])
+    # Usar metodología por defecto para mostrar el gráfico inicial
+    methodology = "Metodología 1: Canal Cronológico Adaptativo"
     
     # Calcular y mostrar el gráfico según metodología
     if methodology == "Metodología 1: Canal Cronológico Adaptativo":
@@ -955,6 +952,12 @@ if data and history is not None:
         height=600
     )
     st.plotly_chart(fig_main, use_container_width=True)
+    
+    # Selector de metodología después del gráfico
+    methodology = st.selectbox("Seleccionar Metodología de Canal", 
+                              ["Metodología 1: Canal Cronológico Adaptativo", 
+                               "Metodología 2: Canal Adaptativo que Contiene Todos los Precios",
+                               "Metodología 3: Regresión de 3 Puntos"])
     
     # Mostrar descripción de la metodología seleccionada
     
