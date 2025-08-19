@@ -75,28 +75,111 @@ def get_historical_prices(ticker):
         
         # Obtener métricas fundamentales
         info = stock.info
+        
+        # Métricas básicas de valoración
+        trailing_pe = info.get("trailingPE", None)
+        forward_pe = info.get("forwardPE", None)
+        peg_ratio = info.get("pegRatio", None)
+        price_to_book = info.get("priceToBook", None)
+        price_to_sales = info.get("priceToSalesTrailing12Months", None)
+        
+        # Métricas de rentabilidad
+        roe = info.get("returnOnEquity", None)
+        roa = info.get("returnOnAssets", None)
+        profit_margin = info.get("profitMargins", None)
+        operating_margin = info.get("operatingMargins", None)
+        
+        # Métricas de dividendos
         dividend_rate = info.get("dividendRate", None)
-        dividend_yield = (dividend_rate / current_price * 100) if dividend_rate and current_price else None
-        if dividend_yield and dividend_yield > 20:
+        dividend_yield = info.get("dividendYield", None)
+        if dividend_yield:
+            dividend_yield *= 100  # Convertir a porcentaje
+        elif dividend_rate and current_price:
+            dividend_yield = (dividend_rate / current_price) * 100
+        
+        # Validar dividend yield (eliminar valores anómalos)
+        if dividend_yield and dividend_yield > 25:
             dividend_yield = None
+            
+        payout_ratio = info.get("payoutRatio", None)
+        if payout_ratio:
+            payout_ratio *= 100  # Convertir a porcentaje
+        
+        # Métricas de crecimiento
+        revenue_growth = info.get("revenueGrowth", None)
+        earnings_growth = info.get("earningsGrowth", None)
+        if revenue_growth:
+            revenue_growth *= 100  # Convertir a porcentaje
+        if earnings_growth:
+            earnings_growth *= 100  # Convertir a porcentaje
+            
+        # Métricas financieras
+        market_cap = info.get("marketCap", None)
+        enterprise_value = info.get("enterpriseValue", None)
+        total_debt = info.get("totalDebt", None)
+        total_cash = info.get("totalCash", None)
+        
+        # EBITDA
         ebitda = info.get("ebitda", None)
         if ebitda is None and hasattr(stock, "financials"):
             try:
                 ebitda = stock.financials.loc["EBITDA"].iloc[-1] if "EBITDA" in stock.financials.index else None
             except:
                 ebitda = None
+                
+        # Free Cash Flow
         fcf = info.get("freeCashflow", None)
         if fcf is None and hasattr(stock, "cashflow"):
             try:
                 fcf = stock.cashflow.loc["Free Cash Flow"].iloc[-1] if "Free Cash Flow" in stock.cashflow.index else None
             except:
                 fcf = None
+        
+        # Ratios calculados
+        debt_to_equity = None
+        if total_debt and market_cap:
+            debt_to_equity = total_debt / market_cap
+            
+        ev_ebitda = None
+        if enterprise_value and ebitda and ebitda > 0:
+            ev_ebitda = enterprise_value / ebitda
+            
+        fcf_yield = None
+        if fcf and market_cap and fcf > 0:
+            fcf_yield = (fcf / market_cap) * 100
+        
         fundamentals = {
-            "PER": round(info.get("trailingPE", None), 2) if info.get("trailingPE") else None,
+            # Valoración
+            "PER": round(trailing_pe, 2) if trailing_pe else None,
+            "PER Forward": round(forward_pe, 2) if forward_pe else None,
+            "PEG": round(peg_ratio, 2) if peg_ratio else None,
+            "P/B": round(price_to_book, 2) if price_to_book else None,
+            "P/S": round(price_to_sales, 2) if price_to_sales else None,
+            "EV/EBITDA": round(ev_ebitda, 2) if ev_ebitda else None,
+            
+            # Rentabilidad
             "BPA": round(info.get("trailingEps", None), 2) if info.get("trailingEps") else None,
+            "ROE (%)": round(roe * 100, 2) if roe else None,
+            "ROA (%)": round(roa * 100, 2) if roa else None,
+            "Margen Beneficio (%)": round(profit_margin * 100, 2) if profit_margin else None,
+            "Margen Operativo (%)": round(operating_margin * 100, 2) if operating_margin else None,
+            
+            # Dividendos
             "Rentabilidad Dividendo (%)": round(dividend_yield, 2) if dividend_yield else None,
+            "Payout Ratio (%)": round(payout_ratio, 2) if payout_ratio else None,
+            
+            # Crecimiento
+            "Crecimiento Ingresos (%)": round(revenue_growth, 2) if revenue_growth else None,
+            "Crecimiento Beneficios (%)": round(earnings_growth, 2) if earnings_growth else None,
+            
+            # Financieras
+            "Cap. Mercado": market_cap,
             "EBITDA": ebitda,
-            "FCF": fcf
+            "FCF": fcf,
+            "FCF Yield (%)": round(fcf_yield, 2) if fcf_yield else None,
+            "Deuda/Equity": round(debt_to_equity, 2) if debt_to_equity else None,
+            "Deuda Total": total_debt,
+            "Efectivo Total": total_cash
         }
         
         data = {
@@ -140,8 +223,112 @@ st.title("Herramienta de Inversión - Valores Españoles")
 st.subheader("Resumen de Cotizadas Españolas")
 st.dataframe(df_results)
 
-# Seleccionar empresa
-selected_ticker = st.selectbox("Seleccionar Empresa", tickers)
+# Filtros de empresas
+st.subheader("🔍 Filtros de Empresas")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.write("**Filtro por PER**")
+    per_filter_enabled = st.checkbox("Activar filtro PER")
+    if per_filter_enabled:
+        per_min = st.number_input("PER mínimo", value=0.0, step=0.1)
+        per_max = st.number_input("PER máximo", value=30.0, step=0.1)
+
+with col2:
+    st.write("**Filtro por Deuda/Equity**")
+    debt_filter_enabled = st.checkbox("Activar filtro Deuda/Equity")
+    if debt_filter_enabled:
+        debt_max = st.number_input("Deuda/Equity máximo", value=1.0, step=0.1)
+
+with col3:
+    st.write("**Aplicar Filtros**")
+    
+    col3_1, col3_2 = st.columns(2)
+    with col3_1:
+        filter_button = st.button("🔍 Filtrar Empresas")
+    with col3_2:
+        clear_button = st.button("🗑️ Limpiar Filtros")
+    
+    if clear_button:
+        st.session_state.filtered_tickers = tickers
+        st.success("✅ Filtros limpiados. Mostrando todas las empresas.")
+    
+    if filter_button:
+        with st.spinner("Analizando empresas..."):
+            filtered_companies = []
+            
+            for ticker in tickers:
+                # Obtener datos de la empresa para filtrar
+                try:
+                    stock = yf.Ticker(ticker)
+                    info = stock.info
+                    
+                    # Obtener PER y Deuda/Equity
+                    per = info.get("trailingPE", None)
+                    market_cap = info.get("marketCap", None)
+                    total_debt = info.get("totalDebt", None)
+                    debt_equity = None
+                    if total_debt and market_cap:
+                        debt_equity = total_debt / market_cap
+                    
+                    # Aplicar filtros
+                    include_company = True
+                    exclusion_reasons = []
+                    
+                    if per_filter_enabled:
+                        if per is None:
+                            include_company = False
+                            exclusion_reasons.append("PER no disponible")
+                        elif per < per_min or per > per_max:
+                            include_company = False
+                            exclusion_reasons.append(f"PER {per:.2f} fuera del rango [{per_min}-{per_max}]")
+                    
+                    if debt_filter_enabled:
+                        if debt_equity is None:
+                            include_company = False
+                            exclusion_reasons.append("Deuda/Equity no disponible")
+                        elif debt_equity > debt_max:
+                            include_company = False
+                            exclusion_reasons.append(f"Deuda/Equity {debt_equity:.2f} > {debt_max}")
+                    
+                    if include_company:
+                        company_name = info.get("longName", ticker)
+                        current_price = info.get("currentPrice", None) or info.get("regularMarketPrice", None)
+                        filtered_companies.append({
+                            "Ticker": ticker,
+                            "Nombre": company_name,
+                            "Precio": f"{current_price:.2f}€" if current_price else "No disponible",
+                            "PER": round(per, 2) if per else "No disponible",
+                            "Deuda/Equity": round(debt_equity, 2) if debt_equity else "No disponible"
+                        })
+                
+                except Exception as e:
+                    continue
+            
+            if filtered_companies:
+                st.success(f"✅ {len(filtered_companies)} de {len(tickers)} empresas cumplen los filtros:")
+                filtered_df = pd.DataFrame(filtered_companies)
+                st.dataframe(filtered_df, use_container_width=True)
+                
+                # Crear lista de tickers filtrados para el selector
+                filtered_tickers = [company["Ticker"] for company in filtered_companies]
+                st.session_state.filtered_tickers = filtered_tickers
+                
+                # Mostrar estadísticas de filtrado
+                st.info(f"📊 Se han excluido {len(tickers) - len(filtered_companies)} empresas que no cumplen los criterios.")
+            else:
+                st.warning("⚠️ Ninguna empresa cumple los filtros especificados")
+                st.info("💡 Prueba a relajar los criterios de filtrado")
+                st.session_state.filtered_tickers = tickers
+
+# Si no se han aplicado filtros, usar todos los tickers
+if 'filtered_tickers' not in st.session_state:
+    st.session_state.filtered_tickers = tickers
+
+# Seleccionar empresa (usar tickers filtrados si existen)
+available_tickers = st.session_state.get('filtered_tickers', tickers)
+selected_ticker = st.selectbox("Seleccionar Empresa", available_tickers)
 data, history, max_dates, min_dates, june30_dates = get_historical_prices(selected_ticker)
 
 if data and history is not None:
@@ -671,20 +858,128 @@ if data and history is not None:
     # Métricas fundamentales
     st.subheader("Métricas Fundamentales")
     
-    col1, col2, col3 = st.columns(3)
+    # Función auxiliar para formatear grandes números
+    def format_large_number(value):
+        if value is None:
+            return "No disponible en Yahoo Finance"
+        if abs(value) >= 1e9:
+            return f"{value/1e9:.1f}B€"
+        elif abs(value) >= 1e6:
+            return f"{value/1e6:.0f}M€"
+        elif abs(value) >= 1e3:
+            return f"{value/1e3:.0f}K€"
+        else:
+            return f"{value:.0f}€"
     
-    with col1:
-        st.metric("PER", f"{data['PER']:.2f}" if data['PER'] is not None else "N/A")
-        st.metric("Rentabilidad Dividendo", f"{data['Rentabilidad Dividendo (%)']:.2f}%" if data['Rentabilidad Dividendo (%)'] is not None else "N/A")
+    # Crear pestañas para organizar mejor las métricas
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Valoración", "💰 Rentabilidad", "📈 Crecimiento", "🏦 Financieras"])
     
-    with col2:
-        st.metric("BPA", f"{data['BPA']:.2f}" if data['BPA'] is not None else "N/A")
-        ebitda_formatted = f"{data['EBITDA']/1e6:.0f}M€" if data['EBITDA'] is not None else "N/A"
-        st.metric("EBITDA", ebitda_formatted)
+    with tab1:
+        st.write("### Ratios de Valoración")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Precio Actual", f"{data['Precio Actual']:.2f}€")
+            st.metric("PER", f"{data['PER']:.2f}" if data['PER'] is not None else "No disponible en Yahoo Finance")
+        
+        with col2:
+            st.metric("PER Forward", f"{data['PER Forward']:.2f}" if data['PER Forward'] is not None else "No disponible en Yahoo Finance")
+            st.metric("PEG", f"{data['PEG']:.2f}" if data['PEG'] is not None else "No disponible en Yahoo Finance")
+        
+        with col3:
+            st.metric("P/B", f"{data['P/B']:.2f}" if data['P/B'] is not None else "No disponible en Yahoo Finance")
+            st.metric("P/S", f"{data['P/S']:.2f}" if data['P/S'] is not None else "No disponible en Yahoo Finance")
+        
+        with col4:
+            st.metric("EV/EBITDA", f"{data['EV/EBITDA']:.2f}" if data['EV/EBITDA'] is not None else "No disponible en Yahoo Finance")
+            market_cap_formatted = format_large_number(data['Cap. Mercado'])
+            st.metric("Cap. Mercado", market_cap_formatted)
     
-    with col3:
-        st.metric("Precio Actual", f"{data['Precio Actual']:.2f}€")
-        fcf_formatted = f"{data['FCF']/1e6:.0f}M€" if data['FCF'] is not None else "N/A"
-        st.metric("FCF", fcf_formatted)
+    with tab2:
+        st.write("### Métricas de Rentabilidad")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("BPA", f"{data['BPA']:.2f}€" if data['BPA'] is not None else "No disponible en Yahoo Finance")
+            st.metric("ROE", f"{data['ROE (%)']:.2f}%" if data['ROE (%)'] is not None else "No disponible en Yahoo Finance")
+        
+        with col2:
+            st.metric("ROA", f"{data['ROA (%)']:.2f}%" if data['ROA (%)'] is not None else "No disponible en Yahoo Finance")
+            st.metric("Margen Beneficio", f"{data['Margen Beneficio (%)']:.2f}%" if data['Margen Beneficio (%)'] is not None else "No disponible en Yahoo Finance")
+        
+        with col3:
+            st.metric("Margen Operativo", f"{data['Margen Operativo (%)']:.2f}%" if data['Margen Operativo (%)'] is not None else "No disponible en Yahoo Finance")
+            st.metric("Rent. Dividendo", f"{data['Rentabilidad Dividendo (%)']:.2f}%" if data['Rentabilidad Dividendo (%)'] is not None else "No disponible en Yahoo Finance")
+        
+        with col4:
+            st.metric("Payout Ratio", f"{data['Payout Ratio (%)']:.2f}%" if data['Payout Ratio (%)'] is not None else "No disponible en Yahoo Finance")
+            st.metric("FCF Yield", f"{data['FCF Yield (%)']:.2f}%" if data['FCF Yield (%)'] is not None else "No disponible en Yahoo Finance")
+    
+    with tab3:
+        st.write("### Métricas de Crecimiento")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            revenue_growth = data['Crecimiento Ingresos (%)']
+            revenue_delta = f"+{revenue_growth:.2f}%" if revenue_growth and revenue_growth > 0 else f"{revenue_growth:.2f}%" if revenue_growth else None
+            st.metric("Crecimiento Ingresos", 
+                     f"{revenue_growth:.2f}%" if revenue_growth is not None else "No disponible en Yahoo Finance",
+                     delta=revenue_delta)
+        
+        with col2:
+            earnings_growth = data['Crecimiento Beneficios (%)']
+            earnings_delta = f"+{earnings_growth:.2f}%" if earnings_growth and earnings_growth > 0 else f"{earnings_growth:.2f}%" if earnings_growth else None
+            st.metric("Crecimiento Beneficios",
+                     f"{earnings_growth:.2f}%" if earnings_growth is not None else "No disponible en Yahoo Finance",
+                     delta=earnings_delta)
+        
+        # Interpretación de crecimiento
+        if revenue_growth is not None and earnings_growth is not None:
+            if revenue_growth > 10 and earnings_growth > 10:
+                st.success("🚀 Empresa en fuerte crecimiento")
+            elif revenue_growth > 5 and earnings_growth > 5:
+                st.info("📈 Crecimiento moderado y sostenible")
+            elif revenue_growth < 0 or earnings_growth < 0:
+                st.warning("⚠️ Crecimiento negativo - Revisar situación")
+            else:
+                st.info("📊 Crecimiento estable")
+    
+    with tab4:
+        st.write("### Situación Financiera")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            ebitda_formatted = format_large_number(data['EBITDA'])
+            st.metric("EBITDA", ebitda_formatted)
+            fcf_formatted = format_large_number(data['FCF'])
+            st.metric("FCF", fcf_formatted)
+        
+        with col2:
+            debt_formatted = format_large_number(data['Deuda Total'])
+            st.metric("Deuda Total", debt_formatted)
+            cash_formatted = format_large_number(data['Efectivo Total'])
+            st.metric("Efectivo Total", cash_formatted)
+        
+        with col3:
+            st.metric("Deuda/Equity", f"{data['Deuda/Equity']:.2f}" if data['Deuda/Equity'] is not None else "No disponible en Yahoo Finance")
+            
+            # Calcular deuda neta
+            debt_total = data['Deuda Total'] if data['Deuda Total'] else 0
+            cash_total = data['Efectivo Total'] if data['Efectivo Total'] else 0
+            net_debt = debt_total - cash_total
+            net_debt_formatted = format_large_number(net_debt) if debt_total or cash_total else "No disponible en Yahoo Finance"
+            st.metric("Deuda Neta", net_debt_formatted)
+        
+        # Interpretación financiera
+        debt_equity = data['Deuda/Equity']
+        if debt_equity is not None:
+            if debt_equity < 0.3:
+                st.success("💪 Situación financiera muy sólida")
+            elif debt_equity < 0.6:
+                st.info("✅ Situación financiera saludable")
+            elif debt_equity < 1.0:
+                st.warning("⚠️ Endeudamiento moderado-alto")
+            else:
+                st.error("🔴 Endeudamiento elevado - Riesgo financiero")
 else:
     st.error(f"No hay datos disponibles para {selected_ticker}")
