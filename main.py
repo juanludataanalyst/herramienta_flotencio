@@ -12,10 +12,42 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 # Lista de tickers de empresas españolas
 tickers = [
-    "TEF.MC", "BBVA.MC", "IBE.MC", "REP.MC", "ITX.MC",
-    "SAN.MC", "CLNX.MC", "TLGO.MC", "AENA.MC", "FER.MC"
+    "ITX.MC",  # Inditex
+    "IBE.MC",  # Iberdrola
+    "SAN.MC",  # Banco Santander
+    "BBVA.MC", # BBVA
+    "TEF.MC",  # Telefónica
+    "REP.MC",  # Repsol
+    "AENA.MC", # Aena
+    "FER.MC",  # Ferrovial
+    "CLNX.MC", # Cellnex Telecom
+    "AMS.MC",  # Amadeus IT Group
+    "ACS.MC",  # ACS
+    "ANA.MC",  # Acciona
+    "SAB.MC",  # Banco Sabadell
+    "CABK.MC", # Caixabank
+    "ELE.MC",  # Endesa
+    "ENG.MC",  # Enagás
+    "GRF.MC",  # Grifols
+    "IAG.MC",  # International Airlines Group
+    "MAP.MC",  # Mapfre
+    "NTGY.MC", # Naturgy
+    "RED.MC",  # Redeia (Red Eléctrica)
+    "SGRE.MC", # Siemens Gamesa
+    "BKT.MC",  # Bankinter
+    "MTS.MC",  # ArcelorMittal
+    "ACX.MC",  # Acerinox
+    "COL.MC",  # Inmobiliaria Colonial
+    "MRL.MC",  # Merlin Properties
+    "LOG.MC",  # Logista
+    "ALM.MC",  # Almirall
+    "PHM.MC",  # PharmaMar
+    "CIE.MC",  # CIE Automotive
+    "VIS.MC",  # Viscofan
+    "TLGO.MC", # Talgo
+    "FDR.MC",  # Fluidra
+    "ROVI.MC"  # Laboratorios Rovi
 ]
-
 # Función para obtener precios históricos y métricas fundamentales
 @st.cache_data
 def get_historical_prices(ticker):
@@ -219,9 +251,6 @@ st.write("Precios históricos guardados en archivos individuales")
 # Interfaz de Streamlit
 st.title("Herramienta de Inversión - Valores Españoles")
 
-# Mostrar tabla
-st.subheader("Resumen de Cotizadas Españolas")
-st.dataframe(df_results)
 
 # Filtros de empresas
 st.subheader("🔍 Filtros de Empresas")
@@ -231,15 +260,13 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.write("**Filtro por PER**")
     per_filter_enabled = st.checkbox("Activar filtro PER")
-    if per_filter_enabled:
-        per_min = st.number_input("PER mínimo", value=0.0, step=0.1)
-        per_max = st.number_input("PER máximo", value=30.0, step=0.1)
+    per_min = st.number_input("PER mínimo", value=0.0, step=0.1) if per_filter_enabled else 0.0
+    per_max = st.number_input("PER máximo", value=30.0, step=0.1) if per_filter_enabled else 30.0
 
 with col2:
     st.write("**Filtro por Deuda/Equity**")
     debt_filter_enabled = st.checkbox("Activar filtro Deuda/Equity")
-    if debt_filter_enabled:
-        debt_max = st.number_input("Deuda/Equity máximo", value=1.0, step=0.1)
+    debt_max = st.number_input("Deuda/Equity máximo", value=1.0, step=0.1) if debt_filter_enabled else 1.0
 
 with col3:
     st.write("**Aplicar Filtros**")
@@ -255,56 +282,45 @@ with col3:
         st.success("✅ Filtros limpiados. Mostrando todas las empresas.")
     
     if filter_button:
-        with st.spinner("Analizando empresas..."):
+        with st.spinner("Filtrando empresas..."):
             filtered_companies = []
             
-            for ticker in tickers:
-                # Obtener datos de la empresa para filtrar
-                try:
-                    stock = yf.Ticker(ticker)
-                    info = stock.info
-                    
-                    # Obtener PER y Deuda/Equity
-                    per = info.get("trailingPE", None)
-                    market_cap = info.get("marketCap", None)
-                    total_debt = info.get("totalDebt", None)
-                    debt_equity = None
-                    if total_debt and market_cap:
-                        debt_equity = total_debt / market_cap
-                    
-                    # Aplicar filtros
-                    include_company = True
-                    exclusion_reasons = []
-                    
-                    if per_filter_enabled:
-                        if per is None:
-                            include_company = False
-                            exclusion_reasons.append("PER no disponible")
-                        elif per < per_min or per > per_max:
-                            include_company = False
-                            exclusion_reasons.append(f"PER {per:.2f} fuera del rango [{per_min}-{per_max}]")
-                    
-                    if debt_filter_enabled:
-                        if debt_equity is None:
-                            include_company = False
-                            exclusion_reasons.append("Deuda/Equity no disponible")
-                        elif debt_equity > debt_max:
-                            include_company = False
-                            exclusion_reasons.append(f"Deuda/Equity {debt_equity:.2f} > {debt_max}")
-                    
-                    if include_company:
-                        company_name = info.get("longName", ticker)
-                        current_price = info.get("currentPrice", None) or info.get("regularMarketPrice", None)
-                        filtered_companies.append({
-                            "Ticker": ticker,
-                            "Nombre": company_name,
-                            "Precio": f"{current_price:.2f}€" if current_price else "No disponible",
-                            "PER": round(per, 2) if per else "No disponible",
-                            "Deuda/Equity": round(debt_equity, 2) if debt_equity else "No disponible"
-                        })
+            # Usar datos ya cargados en lugar de hacer nuevas llamadas a la API
+            for company_data in results:
+                ticker = company_data["Ticker"]
                 
-                except Exception as e:
-                    continue
+                # Obtener PER y Deuda/Equity de los datos ya cargados
+                per = company_data.get("PER", None)
+                debt_equity = company_data.get("Deuda/Equity", None)
+                
+                # Aplicar filtros
+                include_company = True
+                exclusion_reasons = []
+                
+                if per_filter_enabled:
+                    if per is None:
+                        include_company = False
+                        exclusion_reasons.append("PER no disponible")
+                    elif per < per_min or per > per_max:
+                        include_company = False
+                        exclusion_reasons.append(f"PER {per:.2f} fuera del rango [{per_min}-{per_max}]")
+                
+                if debt_filter_enabled:
+                    if debt_equity is None:
+                        include_company = False
+                        exclusion_reasons.append("Deuda/Equity no disponible")
+                    elif debt_equity > debt_max:
+                        include_company = False
+                        exclusion_reasons.append(f"Deuda/Equity {debt_equity:.2f} > {debt_max}")
+                
+                if include_company:
+                    filtered_companies.append({
+                        "Ticker": ticker,
+                        "Nombre": company_data.get("Nombre", ticker),
+                        "Precio": f"{company_data.get('Precio Actual', 0):.2f}€" if company_data.get("Precio Actual") else "No disponible",
+                        "PER": round(per, 2) if per else "No disponible",
+                        "Deuda/Equity": round(debt_equity, 2) if debt_equity else "No disponible"
+                    })
             
             if filtered_companies:
                 st.success(f"✅ {len(filtered_companies)} de {len(tickers)} empresas cumplen los filtros:")
@@ -328,7 +344,28 @@ if 'filtered_tickers' not in st.session_state:
 
 # Seleccionar empresa (usar tickers filtrados si existen)
 available_tickers = st.session_state.get('filtered_tickers', tickers)
-selected_ticker = st.selectbox("Seleccionar Empresa", available_tickers)
+
+# Crear diccionario de ticker -> nombre para el selector
+ticker_to_name = {}
+for ticker in available_tickers:
+    # Buscar el nombre en los datos ya cargados
+    ticker_data = next((item for item in results if item['Ticker'] == ticker), None)
+    if ticker_data:
+        company_name = ticker_data['Nombre']
+        if company_name != "N/A":
+            ticker_to_name[ticker] = f"{company_name} ({ticker})"
+        else:
+            ticker_to_name[ticker] = ticker
+    else:
+        ticker_to_name[ticker] = ticker
+
+# Crear lista de opciones para mostrar en el selector
+options_list = list(ticker_to_name.values())
+name_to_ticker = {v: k for k, v in ticker_to_name.items()}
+
+# Selector con nombres de empresas
+selected_option = st.selectbox("🏢 Seleccionar Empresa", options_list)
+selected_ticker = name_to_ticker[selected_option]
 data, history, max_dates, min_dates, june30_dates = get_historical_prices(selected_ticker)
 
 if data and history is not None:
