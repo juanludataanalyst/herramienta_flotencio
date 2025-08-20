@@ -217,7 +217,7 @@ tickers = [
    # "YEPSA.MC",
     "YGO2.MC",
     "YIRG.MC",
-    #"YMIL.MC"
+    # "YMIL.MC"
 ]
 
 # Función para obtener precios históricos y métricas fundamentales
@@ -489,7 +489,7 @@ with col3:
                     filtered_companies.append({
                         "Ticker": ticker,
                         "Nombre": company_data.get("Nombre", ticker),
-                        "Precio": f"{company_data.get('Precio Actual', 0):.2f}€" if company_data.get("Precio Actual") else "No disponible",
+                        "Precio": f'{company_data.get('Precio Actual', 0):.2f}€' if company_data.get("Precio Actual") else "No disponible",
                         "PER": round(per, 2) if per else "No disponible",
                         "Deuda/Equity": round(debt_equity, 2) if debt_equity else "No disponible"
                     })
@@ -1058,7 +1058,7 @@ if data and history is not None:
     # Función auxiliar para formatear grandes números
     def format_large_number(value):
         if value is None:
-            return "No disponible en Yahoo Finance"
+            return "-"
         if abs(value) >= 1e9:
             return f"{value/1e9:.1f}B€"
         elif abs(value) >= 1e6:
@@ -1077,18 +1077,18 @@ if data and history is not None:
         
         with col1:
             st.metric("Precio Actual", f"{data['Precio Actual']:.2f}€")
-            st.metric("PER", f"{data['PER']:.2f}" if data['PER'] is not None else "No disponible en Yahoo Finance")
+            st.metric("PER", f"{data['PER']:.2f}" if data['PER'] is not None else "-")
         
         with col2:
-            st.metric("PER Forward", f"{data['PER Forward']:.2f}" if data['PER Forward'] is not None else "No disponible en Yahoo Finance")
-            st.metric("PEG", f"{data['PEG']:.2f}" if data['PEG'] is not None else "No disponible en Yahoo Finance")
+            st.metric("PER Forward", f"{data['PER Forward']:.2f}" if data['PER Forward'] is not None else "-")
+            st.metric("PEG", f"{data['PEG']:.2f}" if data['PEG'] is not None else "-")
         
         with col3:
-            st.metric("P/B", f"{data['P/B']:.2f}" if data['P/B'] is not None else "No disponible en Yahoo Finance")
-            st.metric("P/S", f"{data['P/S']:.2f}" if data['P/S'] is not None else "No disponible en Yahoo Finance")
+            st.metric("P/B", f"{data['P/B']:.2f}" if data['P/B'] is not None else "-")
+            st.metric("P/S", f"{data['P/S']:.2f}" if data['P/S'] is not None else "-")
         
         with col4:
-            st.metric("EV/EBITDA", f"{data['EV/EBITDA']:.2f}" if data['EV/EBITDA'] is not None else "No disponible en Yahoo Finance")
+            st.metric("EV/EBITDA", f"{data['EV/EBITDA']:.2f}" if data['EV/EBITDA'] is not None else "-")
             market_cap_formatted = format_large_number(data['Cap. Mercado'])
             st.metric("Cap. Mercado", market_cap_formatted)
 
@@ -1097,20 +1097,20 @@ if data and history is not None:
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("BPA", f"{data['BPA']:.2f}€" if data['BPA'] is not None else "No disponible en Yahoo Finance")
-            st.metric("ROE", f"{data['ROE (%)']:.2f}%" if data['ROE (%)'] is not None else "No disponible en Yahoo Finance")
+            st.metric("BPA", f"{data['BPA']:.2f}€" if data['BPA'] is not None else "-")
+            st.metric("ROE", f"{data['ROE (%)']:.2f}%" if data['ROE (%)'] is not None else "-")
         
         with col2:
-            st.metric("ROA", f"{data['ROA (%)']:.2f}%" if data['ROA (%)'] is not None else "No disponible en Yahoo Finance")
-            st.metric("Margen Beneficio", f"{data['Margen Beneficio (%)']:.2f}%" if data['Margen Beneficio (%)'] is not None else "No disponible en Yahoo Finance")
+            st.metric("ROA", f"{data['ROA (%)']:.2f}%" if data['ROA (%)'] is not None else "-")
+            st.metric("Margen Beneficio", f"{data['Margen Beneficio (%)']:.2f}%" if data['Margen Beneficio (%)'] is not None else "-")
         
         with col3:
-            st.metric("Margen Operativo", f"{data['Margen Operativo (%)']:.2f}%" if data['Margen Operativo (%)'] is not None else "No disponible en Yahoo Finance")
-            st.metric("Rent. Dividendo", f"{data['Rentabilidad Dividendo (%)']:.2f}%" if data['Rentabilidad Dividendo (%)'] is not None else "No disponible en Yahoo Finance")
+            st.metric("Margen Operativo", f"{data['Margen Operativo (%)']:.2f}%" if data['Margen Operativo (%)'] is not None else "-")
+            st.metric("Rent. Dividendo", f"{data['Rentabilidad Dividendo (%)']:.2f}%" if data['Rentabilidad Dividendo (%)'] is not None else "-")
         
         with col4:
-            st.metric("Payout Ratio", f"{data['Payout Ratio (%)']:.2f}%" if data['Payout Ratio (%)'] is not None else "No disponible en Yahoo Finance")
-            st.metric("FCF Yield", f"{data['FCF Yield (%)']:.2f}%" if data['FCF Yield (%)'] is not None else "No disponible en Yahoo Finance")
+            st.metric("Payout Ratio", f"{data['Payout Ratio (%)']:.2f}%" if data['Payout Ratio (%)'] is not None else "-")
+            st.metric("FCF Yield", f"{data['FCF Yield (%)']:.2f}%" if data['FCF Yield (%)'] is not None else "-")
 
     with tab3:
         st.write("### Métricas de Crecimiento")
@@ -1120,14 +1120,14 @@ if data and history is not None:
             revenue_growth = data['Crecimiento Ingresos (%)']
             revenue_delta = f"+{revenue_growth:.2f}%" if revenue_growth and revenue_growth > 0 else f"{revenue_growth:.2f}%" if revenue_growth else None
             st.metric("Crecimiento Ingresos", 
-                     f"{revenue_growth:.2f}%" if revenue_growth is not None else "No disponible en Yahoo Finance",
+                     f"{revenue_growth:.2f}%" if revenue_growth is not None else "-",
                      delta=revenue_delta)
         
         with col2:
             earnings_growth = data['Crecimiento Beneficios (%)']
             earnings_delta = f"+{earnings_growth:.2f}%" if earnings_growth and earnings_growth > 0 else f"{earnings_growth:.2f}%" if earnings_growth else None
             st.metric("Crecimiento Beneficios",
-                     f"{earnings_growth:.2f}%" if earnings_growth is not None else "No disponible en Yahoo Finance",
+                     f"{earnings_growth:.2f}%" if earnings_growth is not None else "-",
                      delta=earnings_delta)
         
         # Interpretación de crecimiento
@@ -1158,13 +1158,13 @@ if data and history is not None:
             st.metric("Efectivo Total", cash_formatted)
         
         with col3:
-            st.metric("Deuda/Equity", f"{data['Deuda/Equity']:.2f}" if data['Deuda/Equity'] is not None else "No disponible en Yahoo Finance")
+            st.metric("Deuda/Equity", f"{data['Deuda/Equity']:.2f}" if data['Deuda/Equity'] is not None else "-")
             
             # Calcular deuda neta
             debt_total = data['Deuda Total'] if data['Deuda Total'] else 0
             cash_total = data['Efectivo Total'] if data['Efectivo Total'] else 0
             net_debt = debt_total - cash_total
-            net_debt_formatted = format_large_number(net_debt) if debt_total or cash_total else "No disponible en Yahoo Finance"
+            net_debt_formatted = format_large_number(net_debt) if debt_total or cash_total else "-"
             st.metric("Deuda Neta", net_debt_formatted)
         
         # Interpretación financiera
