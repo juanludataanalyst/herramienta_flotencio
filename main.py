@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 # Lista de tickers de empresas españolas
 tickers = [
-    "DIA.MC",
+    
     "AIR.MC",
     "ITX.MC",
     "SAN.MC",
@@ -24,6 +24,7 @@ tickers = [
     "XVALO.MC",
     "CCEP.MC",
     "FER.MC",
+    "DIA.MC",
     "AMS.MC",
     "ELE.MC",
     "TEF.MC",
@@ -93,7 +94,7 @@ tickers = [
     "YCPS.MC",
     "XUSI.MC",
     "R4.MC",
-    "EAT.MC",
+   # "EAT.MC",
     "RLIA.MC",
     "ART.MC",
     "CBAV.MC",
@@ -133,13 +134,13 @@ tickers = [
     "ORY.MC",
     "INDXA.MC",
     "SNG.MC",
-    "AI.MC",
+   # "AI.MC",
     "YDOA.MC",
     "GAM.MC",
     "YVIT.MC",
     "NEA.MC",
     "GGR.MC",
-    "BKY.MC",
+  #  "BKY.MC",
     "EIDF.MC",
     "NTH.MC",
     "AMEN.MC",
@@ -202,21 +203,21 @@ tickers = [
     "HAN.MC",
     "YTRA.MC",
     "CITY.MC",
-    "CIRSA.MC",
+   # "CIRSA.MC",
     "COXG.MC",
     "GRF-P.MC",
-    "HBX.MC",
-    "IFL-D.MC",
-    "RDG.MC",
-    "SCAP7.MC",
-    "SCCMM.MC",
+   # "HBX.MC",
+  #  "IFL-D.MC",
+  #  "RDG.MC",
+   # "SCAP7.MC",
+  #  "SCCMM.MC",
     "SCIG4.MC",
     "XBBAR.MC",
     "XCOPO.MC",
-    "YEPSA.MC",
+   # "YEPSA.MC",
     "YGO2.MC",
     "YIRG.MC",
-    "YMIL.MC"
+    #"YMIL.MC"
 ]
 
 # Función para obtener precios históricos y métricas fundamentales
@@ -952,14 +953,92 @@ if data and history is not None:
         height=600
     )
     st.plotly_chart(fig_main, use_container_width=True)
+
+    # --- INICIO: Nueva sección de Métrica de Posición en Canal ---
+    st.subheader("📊 Posición Actual en el Canal de Precios")
+
+    # Definir la función de cálculo aquí para que tenga acceso a las variables del scope
+    def calculate_channel_position(current_price, canal_dates, max_canal, min_canal, history):
+        if not all([current_price, canal_dates, max_canal, min_canal, not history.empty]):
+            return None, None, None
+
+        try:
+            # Timestamps para las fechas del canal
+            x1 = pd.Timestamp(canal_dates[0]).timestamp()
+            x2 = pd.Timestamp(canal_dates[1]).timestamp()
+
+            # Valores del canal en esas fechas
+            y1_upper, y2_upper = max_canal[0], max_canal[1]
+            y1_lower, y2_lower = min_canal[0], min_canal[1]
+
+            # Evitar división por cero si las fechas son las mismas
+            if x2 == x1:
+                return None, None, None
+
+            # Calcular pendientes e interceptos
+            slope_upper = (y2_upper - y1_upper) / (x2 - x1)
+            intercept_upper = y1_upper - slope_upper * x1
+            slope_lower = (y2_lower - y1_lower) / (x2 - x1)
+            intercept_lower = y1_lower - slope_lower * x1
+
+            # Timestamp de la fecha actual (último dato)
+            current_timestamp = pd.Timestamp(history.index[-1]).timestamp()
+
+            # Calcular valor del canal en la fecha actual
+            upper_value_today = slope_upper * current_timestamp + intercept_upper
+            lower_value_today = slope_lower * current_timestamp + intercept_lower
+
+            # Calcular la métrica
+            channel_height = upper_value_today - lower_value_today
+            if channel_height <= 0: # Usar <= para evitar divisiones por cero o negativas
+                return None, upper_value_today, lower_value_today
+
+            position_pct = ((current_price - lower_value_today) / channel_height) * 100
+            return position_pct, upper_value_today, lower_value_today
+        except Exception as e:
+            print(f"Error calculando posición en canal: {e}")
+            return None, None, None
+
+    # Calcular la posición en el canal (reutilizable para alertas)
+    if max_canal and min_canal:
+        position_pct, upper_val, lower_val = calculate_channel_position(
+            data['Precio Actual'], canal_dates, max_canal, min_canal, history
+        )
+
+        if position_pct is not None:
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                st.metric(
+                    label="Posición en Canal",
+                    value=f"{position_pct:.1f}%"
+                )
+                st.write(f"**Soporte:** {lower_val:.2f}€")
+                st.write(f"**Resistencia:** {upper_val:.2f}€")
+
+            with col2:
+                # Barra de progreso para visualización
+                st.progress(min(max(position_pct, 0), 100) / 100)
+
+                # Interpretación de la métrica
+                if position_pct < 0:
+                    st.error("🔴 **Ruptura Bajista:** El precio está por debajo del canal.")
+                elif position_pct < 20:
+                    st.success("🟢 **Zona de Soporte:** El precio está cerca de la base del canal.")
+                elif position_pct < 80:
+                    st.info("🔵 **Zona Media:** El precio está en la parte central del canal.")
+                elif position_pct <= 100:
+                    st.warning("🟠 **Zona de Resistencia:** El precio está cerca del techo del canal.")
+                else:
+                    st.error("🔴 **Ruptura Alcista:** El precio está por encima del canal.")
+        else:
+            st.info("No se pudo calcular la posición en el canal para esta acción.")
+    # --- FIN: Nueva sección ---
     
     # Selector de metodología después del gráfico
     methodology = st.selectbox("Seleccionar Metodología de Canal", 
                               ["Metodología 1: Canal Cronológico Adaptativo", 
                                "Metodología 2: Canal Adaptativo que Contiene Todos los Precios",
                                "Metodología 3: Regresión de 3 Puntos"])
-    
-    # Mostrar descripción de la metodología seleccionada
     
     # Mostrar descripción de la metodología seleccionada
     if methodology == "Metodología 1: Canal Cronológico Adaptativo":
