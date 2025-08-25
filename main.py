@@ -820,13 +820,13 @@ if data and history is not None:
         return None, None, None, None, None, None, None, None, None
     
     # Usar metodología por defecto para mostrar el gráfico inicial
-    methodology = "Metodología 1: Canal Cronológico Adaptativo"
+    methodology = "Metodología 1: Canal con máximos y mínimos reales"
     
     # Calcular y mostrar el gráfico según metodología
-    if methodology == "Metodología 1: Canal Cronológico Adaptativo":
+    if methodology == "Metodología 1: Canal con máximos y mínimos reales":
         max_canal, min_canal, canal_dates, max_connection, min_connection, max_slope, min_slope, max_type, min_type = calculate_chronological_adaptive_channel()
         channel_data = {"type": "chronological", "max_connection": max_connection, "min_connection": min_connection, "max_slope": max_slope, "min_slope": min_slope, "max_type": max_type, "min_type": min_type}
-    elif methodology == "Metodología 2: Canal Adaptativo que Contiene Todos los Precios":
+    elif methodology == "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año":
         max_canal, min_canal, canal_dates, used_max, used_min, max_slope, min_slope, all_max_points, all_min_points = calculate_adaptive_channel_with_projection()
         channel_data = {"type": "adaptive", "used_max": used_max, "used_min": used_min, "max_slope": max_slope, "min_slope": min_slope, "all_max_points": all_max_points, "all_min_points": all_min_points}
     else:  # Metodología 3: Regresión de 3 Puntos
@@ -851,7 +851,7 @@ if data and history is not None:
         ))
         
         # Añadir elementos específicos según metodología
-        if methodology == "Metodología 1: Canal Cronológico Adaptativo":
+        if methodology == "Metodología 1: Canal con máximos y mínimos reales":
             # Añadir conexiones cronológicas
             if channel_data["max_connection"]:
                 max_dates_conn, max_values = zip(*channel_data["max_connection"])
@@ -873,7 +873,7 @@ if data and history is not None:
                     marker=dict(color="lime", size=12, symbol="circle"),
                     line=dict(color="green", width=2)
                 ))
-        elif methodology == "Metodología 2: Canal Adaptativo que Contiene Todos los Precios":
+        elif methodology == "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año":
             # Mostrar todos los puntos cronológicos (30 de junio)
             if channel_data["all_max_points"]:
                 all_max_dates, all_max_values = zip(*channel_data["all_max_points"])
@@ -939,10 +939,10 @@ if data and history is not None:
         ))
     
     # Título del gráfico
-    if methodology == "Metodología 1: Canal Cronológico Adaptativo":
-        methodology_title = "Canal Cronológico Adaptativo"
-    elif methodology == "Metodología 2: Canal Adaptativo que Contiene Todos los Precios":
-        methodology_title = "Canal Adaptativo que Contiene Todos los Precios"
+    if methodology == "Metodología 1: Canal con máximos y mínimos reales":
+        methodology_title = "Canal con máximos y mínimos reales"
+    elif methodology == "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año":
+        methodology_title = "Canal con máximos y mínimos proyectados a mitad del año"
     else:
         methodology_title = "Canal de Regresión de 3 Puntos"
     
@@ -1036,16 +1036,16 @@ if data and history is not None:
     
     # Selector de metodología después del gráfico
     methodology = st.selectbox("Seleccionar Metodología de Canal", 
-                              ["Metodología 1: Canal Cronológico Adaptativo", 
-                               "Metodología 2: Canal Adaptativo que Contiene Todos los Precios",
+                              ["Metodología 1: Canal con máximos y mínimos reales", 
+                               "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año",
                                "Metodología 3: Regresión de 3 Puntos"])
     
     # Mostrar descripción de la metodología seleccionada
-    if methodology == "Metodología 1: Canal Cronológico Adaptativo":
-        st.subheader("Metodología 1: Canal Cronológico Adaptativo")
+    if methodology == "Metodología 1: Canal con máximos y mínimos reales":
+        st.subheader("Metodología 1: Canal con máximos y mínimos reales")
         st.write("Esta metodología conecta cronológicamente los puntos de máximos y mínimos usando sus fechas reales. Comienza uniendo el primer año (2022) con el segundo (2023). Si el tercer año (2024) queda fuera de esas líneas, entonces conecta directamente el primer año con el tercero.")
-    elif methodology == "Metodología 2: Canal Adaptativo que Contiene Todos los Precios":
-        st.subheader("Metodología 2: Canal Adaptativo que Contiene Todos los Precios")
+    elif methodology == "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año":
+        st.subheader("Metodología 2: Canal con máximos y mínimos proyectados a mitad del año")
         st.write("Esta metodología comienza uniendo los dos máximos y mínimos más extremos proyectados al 30 de junio, pero expande automáticamente el canal incluyendo más puntos hasta que todos los precios históricos estén contenidos dentro del canal.")
     else:
         st.subheader("Metodología 3: Canal de Regresión de 3 Puntos")
