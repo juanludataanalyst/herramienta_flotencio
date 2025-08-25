@@ -1046,7 +1046,7 @@ if data and history is not None:
         st.write("Esta metodología conecta los puntos de máximos y mínimos de cada año usando sus fechas reales. Comienza uniendo el primer año (2022) con el segundo (2023). Si el tercer año (2024) queda fuera de esas líneas, entonces conecta directamente el primer año con el tercero.")
     elif methodology == "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año":
         st.subheader("Metodología 2: Canal con máximos y mínimos proyectados a mitad del año")
-        st.write("Esta metodología comienza conecta los puntos de máximos y minimos de cada año proyectandolos a 30 de junio. Comienza uniendo el primer año (2022) con el segundo (2023). Si el tercer año (2024) queda fuera de esas líneas, entonces conecta directamente el primer año con el tercero."")
+        st.write("Esta metodología comienza conecta los puntos de máximos y minimos de cada año proyectandolos a 30 de junio. Comienza uniendo el primer año (2022) con el segundo (2023). Si el tercer año (2024) queda fuera de esas líneas, entonces conecta directamente el primer año con el tercero.")
     else:
         st.subheader("Metodología 3: Canal de Regresión de 3 Puntos")
         st.write("Esta metodología utiliza una regresión lineal sobre los 3 máximos y 3 mínimos anuales para crear un canal de precios")
