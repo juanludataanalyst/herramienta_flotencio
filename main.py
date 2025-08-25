@@ -225,9 +225,9 @@ tickers = [
 def get_historical_prices(ticker):
     try:
         stock = yf.Ticker(ticker)
-        # Obtener datos desde 2022 hasta fin de 2024
+        # Obtener datos desde 2022 hasta hoy
         start_date = datetime(2022, 1, 1)
-        end_date = datetime(2024, 12, 31)
+        end_date = datetime.now()
         history = stock.history(start=start_date, end=end_date)
         
         if history.empty:
@@ -240,8 +240,11 @@ def get_historical_prices(ticker):
         # Eliminar zona horaria del índice
         history.index = history.index.tz_localize(None)
         
-        # Años a procesar
-        years = [2022, 2023, 2024]
+        # Años a procesar - usar los últimos 3 años con datos
+        current_year = datetime.now().year
+        all_years = [year for year in range(2022, current_year + 1)]
+        # Tomar los últimos 3 años
+        years = all_years[-3:] if len(all_years) >= 3 else all_years
         
         # Calcular máximos y mínimos por año
         annual_data = {}
@@ -541,8 +544,10 @@ selected_ticker = name_to_ticker[selected_option]
 data, history, max_dates, min_dates, june30_dates = get_historical_prices(selected_ticker)
 
 if data and history is not None:
-    # Preparar datos para canales
-    years = [2022, 2023, 2024]
+    # Preparar datos para canales - usar los últimos 3 años con datos
+    current_year = datetime.now().year
+    all_years = [year for year in range(2022, current_year + 1)]
+    years = all_years[-3:] if len(all_years) >= 3 else all_years
     max_points = [(max_dates[year], data[f"Máximo {year}"]) for year in years if data[f"Máximo {year}"] is not None]
     min_points = [(min_dates[year], data[f"Mínimo {year}"]) for year in years if data[f"Mínimo {year}"] is not None]
     
@@ -610,8 +615,10 @@ if data and history is not None:
     
     def calculate_chronological_adaptive_channel():
         if len(max_points) == 3 and len(min_points) == 3:
-            # Usar fechas reales ordenadas cronológicamente
-            years = [2022, 2023, 2024]
+            # Usar fechas reales ordenadas cronológicamente - últimos 3 años
+            current_year = datetime.now().year
+            all_years = [year for year in range(2022, current_year + 1)]
+            years = all_years[-3:] if len(all_years) >= 3 else all_years
             chronological_max_points = []
             chronological_min_points = []
             
