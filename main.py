@@ -590,20 +590,32 @@ if data and history is not None:
             predicted_values = [slope * x + intercept for x in dates_num]
             residuals = [v - p for v, p in zip(values, predicted_values)]
             
-            # Separar residuos de máximos y mínimos
-            max_residuals = residuals[:3]
-            min_residuals = residuals[3:]
+            # Separar residuos de máximos y mínimos correctamente
+            max_residuals = []
+            min_residuals = []
+            
+            for i, (date, value) in enumerate(all_points):
+                if (date, value) in max_points:
+                    max_residuals.append(residuals[i])
+                else:
+                    min_residuals.append(residuals[i])
             
             # Calcular offset para canal superior e inferior
             max_offset = np.mean(max_residuals)
             min_offset = np.mean(min_residuals)
             
-            # Crear líneas del canal
-            canal_dates = [history.index[0], history.index[-1]]
+            # Crear líneas del canal (desde inicio hasta hoy)
+            canal_dates = [history.index[0], datetime.now()]
             canal_dates_num = [pd.Timestamp(d).timestamp() for d in canal_dates]
             
             max_canal = [slope * x + intercept + max_offset for x in canal_dates_num]
             min_canal = [slope * x + intercept + min_offset for x in canal_dates_num]
+            
+            print(f"CHANNEL DEBUG - canal_dates_num: {canal_dates_num}")
+            print(f"CHANNEL DEBUG - max_canal values: {max_canal}")
+            print(f"CHANNEL DEBUG - min_canal values: {min_canal}")
+            print(f"CHANNEL DEBUG - slope: {slope:.6f}, intercept: {intercept:.2f}")
+            print(f"CHANNEL DEBUG - max_offset: {max_offset:.2f}, min_offset: {min_offset:.2f}")
             
             return max_canal, min_canal, canal_dates, slope, intercept, max_offset, min_offset
         return None, None, None, None, None, None, None
@@ -675,8 +687,8 @@ if data and history is not None:
                 min_slope = (min_connection[1][1] - min_connection[0][1]) / min_date_diff if min_date_diff != 0 else 0
                 min_intercept = min_connection[0][1] - min_slope * pd.Timestamp(min_connection[0][0]).timestamp()
                 
-                # Crear líneas del canal extendidas
-                canal_dates = [history.index[0], history.index[-1]]
+                # Crear líneas del canal extendidas (hasta hoy)
+                canal_dates = [history.index[0], datetime.now()]
                 canal_dates_num = [pd.Timestamp(d).timestamp() for d in canal_dates]
                 
                 max_canal = [max_slope * x + max_intercept for x in canal_dates_num]
@@ -744,8 +756,8 @@ if data and history is not None:
                     min_slope = (min_by_date[-1][1] - min_by_date[0][1]) / min_date_diff if min_date_diff != 0 else 0
                     min_intercept = min_by_date[0][1] - min_slope * pd.Timestamp(min_by_date[0][0]).timestamp()
                     
-                    # Crear líneas del canal
-                    canal_dates = [history.index[0], history.index[-1]]
+                    # Crear líneas del canal (hasta hoy)
+                    canal_dates = [history.index[0], datetime.now()]
                     canal_dates_num = [pd.Timestamp(d).timestamp() for d in canal_dates]
                     max_canal = [max_slope * x + max_intercept for x in canal_dates_num]
                     min_canal = [min_slope * x + min_intercept for x in canal_dates_num]
@@ -811,7 +823,7 @@ if data and history is not None:
                                         max_slope, min_slope = test_max_slope, test_min_slope
                                         prices_outside = outside_count
                     
-                    canal_dates = [history.index[0], history.index[-1]]
+                    canal_dates = [history.index[0], datetime.now()]
                     used_max_by_date = sorted(used_max_points, key=lambda x: x[0])
                     used_min_by_date = sorted(used_min_points, key=lambda x: x[0])
                     
@@ -819,8 +831,11 @@ if data and history is not None:
         
         return None, None, None, None, None, None, None, None, None
     
-    # Usar metodología por defecto para mostrar el gráfico inicial
-    methodology = "Metodología 1: Canal con máximos y mínimos reales"
+    # Selector de metodología antes del gráfico
+    methodology = st.selectbox("Seleccionar Metodología de Canal", 
+                              ["Metodología 1: Canal con máximos y mínimos reales", 
+                               "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año",
+                               "Metodología 3: Regresión de 3 Puntos"])
     
     # Calcular y mostrar el gráfico según metodología
     if methodology == "Metodología 1: Canal con máximos y mínimos reales":
@@ -953,40 +968,90 @@ if data and history is not None:
         height=600
     )
     st.plotly_chart(fig_main, use_container_width=True)
+    
+    
+    # Mostrar descripción de la metodología seleccionada
+    if methodology == "Metodología 1: Canal con máximos y mínimos reales":
+        st.subheader("Metodología 1: Canal con máximos y mínimos reales")
+        st.write("Esta metodología conecta los puntos de máximos y mínimos de cada año usando sus fechas reales. Comienza uniendo el primer año (2022) con el segundo (2023). Si el tercer año (2024) queda fuera de esas líneas, entonces conecta directamente el primer año con el tercero.")
+    elif methodology == "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año":
+        st.subheader("Metodología 2: Canal con máximos y mínimos proyectados a mitad del año")
+        st.write("Esta metodología comienza conecta los puntos de máximos y minimos de cada año proyectandolos a 30 de junio. Comienza uniendo el primer año (2022) con el segundo (2023). Si el tercer año (2024) queda fuera de esas líneas, entonces conecta directamente el primer año con el tercero.")
+    else:
+        st.subheader("Metodología 3: Canal de Regresión de 3 Puntos")
+        st.write("Esta metodología utiliza una regresión lineal sobre los 3 máximos y 3 mínimos anuales para crear un canal de precios")
+    
+    # Recalcular canal según metodología seleccionada para Posición en Canal
+    if methodology == "Metodología 1: Canal con máximos y mínimos reales":
+        max_canal_selected, min_canal_selected, canal_dates_selected, _, _, _, _, _, _ = calculate_chronological_adaptive_channel()
+        methodology_params = {"type": "linear"}
+    elif methodology == "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año":
+        max_canal_selected, min_canal_selected, canal_dates_selected, _, _, _, _, _, _ = calculate_adaptive_channel_with_projection()
+        methodology_params = {"type": "linear"}
+    else:  # Metodología 3: Regresión de 3 Puntos
+        regression_result = calculate_3_point_regression_channel()
+        if regression_result[0] is not None:
+            max_canal_selected, min_canal_selected, canal_dates_selected, slope, intercept, max_offset, min_offset = regression_result
+            methodology_params = {"type": "regression", "slope": slope, "intercept": intercept, "max_offset": max_offset, "min_offset": min_offset}
+        else:
+            max_canal_selected, min_canal_selected, canal_dates_selected = None, None, None
+            methodology_params = {"type": "linear"}
 
     # --- INICIO: Nueva sección de Métrica de Posición en Canal ---
     st.subheader("📊 Posición Actual en el Canal de Precios")
 
     # Definir la función de cálculo aquí para que tenga acceso a las variables del scope
-    def calculate_channel_position(current_price, canal_dates, max_canal, min_canal, history):
-        if not all([current_price, canal_dates, max_canal, min_canal, not history.empty]):
+    def calculate_channel_position(current_price, canal_dates, max_canal, min_canal, history, method_params):
+        if not all([current_price, not history.empty]):
             return None, None, None
 
         try:
-            # Timestamps para las fechas del canal
-            x1 = pd.Timestamp(canal_dates[0]).timestamp()
-            x2 = pd.Timestamp(canal_dates[1]).timestamp()
+            # Timestamp de la fecha actual (hoy)
+            current_timestamp = pd.Timestamp(datetime.now()).timestamp()
 
-            # Valores del canal en esas fechas
-            y1_upper, y2_upper = max_canal[0], max_canal[1]
-            y1_lower, y2_lower = min_canal[0], min_canal[1]
+            if method_params["type"] == "regression":
+                # Para metodología 3: tomar directamente los valores del canal ya calculado (igual que Plotly)
+                upper_value_today = max_canal[-1] if max_canal else None
+                lower_value_today = min_canal[-1] if min_canal else None
+                
+                print(f"CANAL DEBUG - canal_dates: {canal_dates}")
+                print(f"CANAL DEBUG - canal_dates[-1]: {canal_dates[-1]}")
+                print(f"CANAL DEBUG - max_canal: {max_canal}")
+                print(f"CANAL DEBUG - upper: {upper_value_today:.2f}, lower: {lower_value_today:.2f}")
+            else:
+                # Para metodologías 1 y 2: usar líneas entre dos puntos del canal calculado
+                if not all([canal_dates, max_canal, min_canal]) or len(canal_dates) < 2:
+                    return None, None, None
+                
+                # Encontrar los timestamps del canal
+                x1 = pd.Timestamp(canal_dates[0]).timestamp()
+                x2 = pd.Timestamp(canal_dates[-1]).timestamp()  # Usar el último punto
+                
+                # Valores del canal en esas fechas
+                y1_upper, y2_upper = max_canal[0], max_canal[-1]  # Primer y último punto
+                y1_lower, y2_lower = min_canal[0], min_canal[-1]
+                
+                print(f"LINEAR DEBUG - Dates: {canal_dates[0]} to {canal_dates[-1]}")
+                print(f"LINEAR DEBUG - Upper: {y1_upper:.2f} to {y2_upper:.2f}")
+                print(f"LINEAR DEBUG - Lower: {y1_lower:.2f} to {y2_lower:.2f}")
 
-            # Evitar división por cero si las fechas son las mismas
-            if x2 == x1:
-                return None, None, None
+                # Evitar división por cero si las fechas son las mismas
+                if x2 == x1:
+                    # Si las fechas son iguales, usar los valores directamente
+                    upper_value_today = y1_upper
+                    lower_value_today = y1_lower
+                else:
+                    # Calcular pendientes e interceptos
+                    slope_upper = (y2_upper - y1_upper) / (x2 - x1)
+                    intercept_upper = y1_upper - slope_upper * x1
+                    slope_lower = (y2_lower - y1_lower) / (x2 - x1)
+                    intercept_lower = y1_lower - slope_lower * x1
 
-            # Calcular pendientes e interceptos
-            slope_upper = (y2_upper - y1_upper) / (x2 - x1)
-            intercept_upper = y1_upper - slope_upper * x1
-            slope_lower = (y2_lower - y1_lower) / (x2 - x1)
-            intercept_lower = y1_lower - slope_lower * x1
-
-            # Timestamp de la fecha actual (último dato)
-            current_timestamp = pd.Timestamp(history.index[-1]).timestamp()
-
-            # Calcular valor del canal en la fecha actual
-            upper_value_today = slope_upper * current_timestamp + intercept_upper
-            lower_value_today = slope_lower * current_timestamp + intercept_lower
+                    # Calcular valor del canal en la fecha actual
+                    upper_value_today = slope_upper * current_timestamp + intercept_upper
+                    lower_value_today = slope_lower * current_timestamp + intercept_lower
+                
+                print(f"LINEAR RESULT - Upper today: {upper_value_today:.2f}, Lower today: {lower_value_today:.2f}")
 
             # Calcular la métrica
             channel_height = upper_value_today - lower_value_today
@@ -999,10 +1064,10 @@ if data and history is not None:
             print(f"Error calculando posición en canal: {e}")
             return None, None, None
 
-    # Calcular la posición en el canal (reutilizable para alertas)
-    if max_canal and min_canal:
+    # Calcular la posición en el canal usando la metodología seleccionada
+    if (max_canal_selected and min_canal_selected) or methodology_params["type"] == "regression":
         position_pct, upper_val, lower_val = calculate_channel_position(
-            data['Precio Actual'], canal_dates, max_canal, min_canal, history
+            data['Precio Actual'], canal_dates_selected, max_canal_selected, min_canal_selected, history, methodology_params
         )
 
         if position_pct is not None:
@@ -1033,24 +1098,6 @@ if data and history is not None:
         else:
             st.info("No se pudo calcular la posición en el canal para esta acción.")
     # --- FIN: Nueva sección ---
-    
-    # Selector de metodología después del gráfico
-    methodology = st.selectbox("Seleccionar Metodología de Canal", 
-                              ["Metodología 1: Canal con máximos y mínimos reales", 
-                               "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año",
-                               "Metodología 3: Regresión de 3 Puntos"])
-    
-    # Mostrar descripción de la metodología seleccionada
-    if methodology == "Metodología 1: Canal con máximos y mínimos reales":
-        st.subheader("Metodología 1: Canal con máximos y mínimos reales")
-        st.write("Esta metodología conecta los puntos de máximos y mínimos de cada año usando sus fechas reales. Comienza uniendo el primer año (2022) con el segundo (2023). Si el tercer año (2024) queda fuera de esas líneas, entonces conecta directamente el primer año con el tercero.")
-    elif methodology == "Metodología 2: Canal con máximos y mínimos proyectados a mitad del año":
-        st.subheader("Metodología 2: Canal con máximos y mínimos proyectados a mitad del año")
-        st.write("Esta metodología comienza conecta los puntos de máximos y minimos de cada año proyectandolos a 30 de junio. Comienza uniendo el primer año (2022) con el segundo (2023). Si el tercer año (2024) queda fuera de esas líneas, entonces conecta directamente el primer año con el tercero.")
-    else:
-        st.subheader("Metodología 3: Canal de Regresión de 3 Puntos")
-        st.write("Esta metodología utiliza una regresión lineal sobre los 3 máximos y 3 mínimos anuales para crear un canal de precios")
-    
     
     # Métricas fundamentales
     st.subheader("Métricas Fundamentales")
