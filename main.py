@@ -10,6 +10,52 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
+# Clasificación por mercados
+market_classification = {
+    # IBEX 35 - Las 35 empresas más importantes por capitalización
+    "IBEX 35": [
+        "SAN.MC", "BBVA.MC", "IBE.MC", "ITX.MC", "TEF.MC", "REP.MC", "AENA.MC",
+        "ELE.MC", "ACS.MC", "CABK.MC", "IAG.MC", "MAP.MC", "FER.MC", "SAB.MC",
+        "ENG.MC", "MTS.MC", "FCC.MC", "ALM.MC", "CLR.MC", "LOG.MC", "COL.MC",
+        "GRF.MC", "CLNX.MC", "MEL.MC", "END.MC", "ACX.MC", "RED.MC", "ROVI.MC",
+        "VIS.MC", "UNI.MC", "CCEP.MC", "MRL.MC", "IDR.MC", "SLR.MC", "PUIG.MC"
+    ],
+    
+    # Mercado Continuo - Empresas medianas con buena liquidez
+    "Mercado Continuo": [
+        "GEST.MC", "APAM.MC", "ENO.MC", "CAF.MC", "TRE.MC", "PSG.MC", "PHM.MC",
+        "EBRO.MC", "CASH.MC", "AEDAS.MC", "R4.MC", "DOM.MC", "GSJ.MC", "TUB.MC",
+        "PRS.MC", "NAT.MC", "TLGO.MC", "ALNT.MC", "ENER.MC", "IZER.MC", "ECR.MC",
+        "OHLA.MC", "ATRY.MC", "IBG.MC", "AZK.MC", "PRM.MC", "ARM.MC", "CEV.MC",
+        "AMP.MC", "NXT.MC", "ORY.MC", "SNG.MC", "NEA.MC", "GGR.MC", "NTH.MC",
+        "AMEN.MC", "LIB.MC", "LLYC.MC", "OLE.MC", "TRG.MC", "APG.MC", "VOC.MC",
+        "ETC.MC", "SCO.MC", "ALQ.MC", "PAR.MC", "GIGA.MC", "LGT.MC", "PANG.MC",
+        "FACE.MC", "EZE.MC", "MTB.MC", "MDF.MC", "ADZ.MC", "VYT.MC", "AGIL.MC",
+        "NBI.MC", "DESA.MC", "END.MC", "SAI.MC", "GRI.MC", "LAB.MC", "HLZ.MC",
+        "LLN.MC", "REN.MC", "BST.MC", "COM.MC", "RIO.MC", "NYE.MC", "ELZ.MC",
+        "RSS.MC", "IFLEX.MC", "PVA.MC", "MIO.MC", "VANA.MC", "SPH.MC", "HAN.MC",
+        "CITY.MC", "480S.MC"
+    ],
+    
+    # MAB (Mercado Alternativo Bursátil) - Empresas pequeñas y emergentes
+    "MAB": [
+        "MAKS.MC", "A3M.MC", "EDR.MC", "RLIA.MC", "ART.MC", "CBAV.MC", "ENC.MC",
+        "ADX.MC", "MCM.MC", "EBROM.MC", "ISUR.MC", "RJF.MC", "ATSI.MC", "SCBYT.MC",
+        "SQRL.MC", "INDXA.MC", "EIDF.MC", "ENRS.MC", "COXE.MC", "COXG.MC", "GRF-P.MC",
+        "SCIG4.MC", "OPTS.MC", "AIR.MC", "YADV.MC", "YAI1.MC", "YATO.MC", "YBAR.MC",
+        "YCPS.MC", "YDOA.MC", "YEPSA.MC", "YGO2.MC", "YGOP.MC", "YHSP.MC", "YIBI.MC",
+        "YIPS.MC", "YIRG.MC", "YMHRE.MC", "YMIB.MC", "YMIL.MC", "YMRE.MC", "YQUO.MC",
+        "YTRA.MC", "YTRM.MC", "YVIT.MC"
+    ],
+    
+    # Valores Internacionales - ETFs y empresas extranjeras cotizadas en Madrid
+    "Valores Internacionales": [
+        "XPBR.MC", "XPBRA.MC", "XVALO.MC", "XBBDC.MC", "XNOR.MC", "XELTO.MC",
+        "XGGB.MC", "XCMIG.MC", "XCOP.MC", "XNEO.MC", "XALFA.MC", "XBRK.MC",
+        "XUSIO.MC", "XUSI.MC", "XVOLB.MC", "XBBAR.MC", "XCOPO.MC"
+    ]
+}
+
 # Lista de tickers de empresas españolas
 tickers = [
     
@@ -220,6 +266,13 @@ tickers = [
     # "YMIL.MC"
 ]
 
+# Función para obtener el mercado de un ticker
+def get_market_for_ticker(ticker):
+    for market, tickers_list in market_classification.items():
+        if ticker in tickers_list:
+            return market
+    return "Otros"
+
 # Función para obtener precios históricos y métricas fundamentales
 @st.cache_data
 def get_historical_prices(ticker):
@@ -391,6 +444,7 @@ def get_historical_prices(ticker):
             "Nombre": info.get("longName", "N/A"),
             "Precio Actual": round(current_price, 2) if current_price else None,
             "Sector": info.get("sector", "N/A"),
+            "Mercado": get_market_for_ticker(ticker),
             **annual_data,
             **fundamentals
         }
@@ -424,6 +478,19 @@ print("Precios históricos guardados en archivos individuales")
 st.title("Herramienta de Inversión - Valores Españoles")
 
 
+# Filtro de mercado
+st.subheader("🏢 Selección de Mercado")
+available_markets = ["Todos"] + list(market_classification.keys())
+selected_market = st.selectbox("Seleccionar Mercado", available_markets)
+
+# Filtrar tickers según el mercado seleccionado
+if selected_market == "Todos":
+    market_filtered_tickers = tickers
+else:
+    market_filtered_tickers = [ticker for ticker in tickers if ticker in market_classification[selected_market]]
+
+st.info(f"📊 {len(market_filtered_tickers)} empresas disponibles en {selected_market}")
+
 # Filtros de empresas
 st.subheader("🔍 Filtros de Empresas")
 
@@ -450,9 +517,9 @@ with col3:
         clear_button = st.button("🗑️ Limpiar Filtros")
     
     if clear_button:
-        st.session_state.filtered_tickers = tickers
+        st.session_state.filtered_tickers = market_filtered_tickers
         st.session_state.filter_applied = False
-        st.success("✅ Filtros limpiados. Mostrando todas las empresas.")
+        st.success("✅ Filtros limpiados. Mostrando todas las empresas del mercado seleccionado.")
     
     if filter_button:
         st.session_state.filter_applied = True
@@ -464,6 +531,10 @@ if st.session_state.get('filter_applied', False):
     # Usar datos ya cargados en lugar de hacer nuevas llamadas a la API
     for company_data in results:
         ticker = company_data["Ticker"]
+        
+        # Solo considerar empresas del mercado seleccionado
+        if ticker not in market_filtered_tickers:
+            continue
         
         # Obtener PER y Deuda/Equity de los datos ya cargados
         per = company_data.get("PER", None)
@@ -522,18 +593,18 @@ if st.session_state.get('filter_applied', False):
                 st.success(f"✅ Seleccionada: {selected_company['Nombre']} ({selected_company['Ticker']})")
         
         # Mostrar estadísticas de filtrado
-        st.info(f"📊 Se han excluido {len(tickers) - len(filtered_companies)} empresas que no cumplen los criterios.")
+        st.info(f"📊 Se han excluido {len(market_filtered_tickers) - len(filtered_companies)} empresas que no cumplen los criterios.")
     else:
         st.warning("⚠️ Ninguna empresa cumple los filtros especificados")
         st.info("💡 Prueba a relajar los criterios de filtrado")
-        st.session_state.filtered_tickers = tickers
+        st.session_state.filtered_tickers = market_filtered_tickers
 
-# Si no se han aplicado filtros, usar todos los tickers
+# Si no se han aplicado filtros, usar tickers del mercado seleccionado
 if 'filtered_tickers' not in st.session_state:
-    st.session_state.filtered_tickers = tickers
+    st.session_state.filtered_tickers = market_filtered_tickers
 
 # Seleccionar empresa (usar tickers filtrados si existen)
-available_tickers = st.session_state.get('filtered_tickers', tickers)
+available_tickers = st.session_state.get('filtered_tickers', market_filtered_tickers)
 
 # Crear diccionario de ticker -> nombre para el selector
 ticker_to_name = {}
