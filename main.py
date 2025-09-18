@@ -500,30 +500,25 @@ if st.session_state.get('filter_applied', False):
     
     if filtered_companies:
         st.success(f"✅ {len(filtered_companies)} de {len(tickers)} empresas cumplen los filtros:")
+        st.write("**Haz clic en una fila de la tabla para seleccionar una empresa:**")
         
-        # Crear botones para seleccionar empresas
-        st.write("**Haz clic en una empresa para seleccionarla:**")
-        
-        # Crear columnas para mostrar los botones de manera organizada
-        cols_per_row = 3
-        for i in range(0, len(filtered_companies), cols_per_row):
-            cols = st.columns(cols_per_row)
-            for j, company in enumerate(filtered_companies[i:i+cols_per_row]):
-                with cols[j]:
-                    # Crear un botón para cada empresa
-                    button_text = f"{company['Nombre'][:30]}..." if len(company['Nombre']) > 30 else company['Nombre']
-                    button_text += f"\n({company['Ticker']})"
-                    
-                    if st.button(button_text, key=f"select_{company['Ticker']}", use_container_width=True):
-                        # Actualizar la empresa seleccionada
-                        st.session_state.selected_ticker = company['Ticker']
-                        st.success(f"✅ Seleccionada: {company['Nombre']} ({company['Ticker']})")
-                        st.rerun()
-        
-        st.write("---")
-        # Tabla principal como estaba antes
+        # Tabla principal clickeable
         filtered_df = pd.DataFrame(filtered_companies)
-        st.dataframe(filtered_df, use_container_width=True, height=400)
+        selected_rows = st.dataframe(
+            filtered_df, 
+            use_container_width=True, 
+            height=400,
+            on_select="rerun",
+            selection_mode="single-row"
+        )
+        
+        # Manejar la selección de empresa desde la tabla
+        if selected_rows.selection and selected_rows.selection.rows:
+            selected_row_index = selected_rows.selection.rows[0]
+            selected_company = filtered_companies[selected_row_index]
+            st.session_state.selected_ticker = selected_company['Ticker']
+            st.success(f"✅ Seleccionada: {selected_company['Nombre']} ({selected_company['Ticker']})")
+            st.rerun()
         
         # Mostrar estadísticas de filtrado
         st.info(f"📊 Se han excluido {len(tickers) - len(filtered_companies)} empresas que no cumplen los criterios.")
