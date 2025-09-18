@@ -31,7 +31,7 @@ market_classification = {
         "AMEN.MC", "LIB.MC", "LLYC.MC", "OLE.MC", "TRG.MC", "APG.MC", "VOC.MC",
         "ETC.MC", "SCO.MC", "ALQ.MC", "PAR.MC", "GIGA.MC", "LGT.MC", "PANG.MC",
         "FACE.MC", "EZE.MC", "MTB.MC", "MDF.MC", "ADZ.MC", "VYT.MC", "AGIL.MC",
-        "NBI.MC", "DESA.MC", "END.MC", "SAI.MC", "GRI.MC", "LAB.MC", "HLZ.MC",
+        "NBI.MC", "DESA.MC", "SAI.MC", "GRI.MC", "LAB.MC", "HLZ.MC",
         "LLN.MC", "REN.MC", "BST.MC", "COM.MC", "RIO.MC", "NYE.MC", "ELZ.MC",
         "RSS.MC", "IFLEX.MC", "PVA.MC", "MIO.MC", "VANA.MC", "SPH.MC", "HAN.MC",
         "CITY.MC", "480S.MC"
@@ -570,7 +570,7 @@ if st.session_state.get('filter_applied', False):
             })
     
     if filtered_companies:
-        st.success(f"✅ {len(filtered_companies)} de {len(tickers)} empresas cumplen los filtros:")
+        st.success(f"✅ {len(filtered_companies)} de {len(market_filtered_tickers)} empresas cumplen los filtros:")
         st.write("**Haz clic en una fila de la tabla para seleccionar una empresa:**")
         
         # Tabla principal clickeable
@@ -631,8 +631,10 @@ options_list = list(ticker_to_name.values())
 name_to_ticker = {v: k for k, v in ticker_to_name.items()}
 
 # Selector con nombres de empresas
-# Si hay un ticker seleccionado desde los botones, usar ese
-if 'selected_ticker' in st.session_state and st.session_state.selected_ticker in ticker_to_name:
+# Si hay un ticker seleccionado desde los botones, usar ese (solo si está en el mercado actual)
+if ('selected_ticker' in st.session_state and 
+    st.session_state.selected_ticker in ticker_to_name and 
+    st.session_state.selected_ticker in available_tickers):
     default_option = ticker_to_name[st.session_state.selected_ticker]
     try:
         default_index = options_list.index(default_option)
@@ -640,6 +642,9 @@ if 'selected_ticker' in st.session_state and st.session_state.selected_ticker in
         default_index = 0
 else:
     default_index = 0
+    # Si el ticker seleccionado no está en el mercado actual, limpiar la selección
+    if 'selected_ticker' in st.session_state and st.session_state.selected_ticker not in available_tickers:
+        st.session_state.selected_ticker = None
 
 selected_option = st.selectbox("🏢 Seleccionar Empresa", options_list, index=default_index)
 selected_ticker = name_to_ticker[selected_option]
