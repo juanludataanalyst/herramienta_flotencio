@@ -451,64 +451,64 @@ with col3:
     
     if clear_button:
         st.session_state.filtered_tickers = tickers
+        st.session_state.filter_applied = False
         st.success("✅ Filtros limpiados. Mostrando todas las empresas.")
     
     if filter_button:
-        with st.spinner("Filtrando empresas..."):
-            filtered_companies = []
-            
-            # Usar datos ya cargados en lugar de hacer nuevas llamadas a la API
-            for company_data in results:
-                ticker = company_data["Ticker"]
-                
-                # Obtener PER y Deuda/Equity de los datos ya cargados
-                per = company_data.get("PER", None)
-                debt_equity = company_data.get("Deuda/Equity", None)
-                
-                # Aplicar filtros
-                include_company = True
-                exclusion_reasons = []
-                
-                if per_filter_enabled:
-                    if per is None:
-                        include_company = False
-                        exclusion_reasons.append("PER no disponible")
-                    elif per < per_min or per > per_max:
-                        include_company = False
-                        exclusion_reasons.append(f"PER {per:.2f} fuera del rango [{per_min}-{per_max}]")
-                
-                if debt_filter_enabled:
-                    if debt_equity is None:
-                        include_company = False
-                        exclusion_reasons.append("Deuda/Equity no disponible")
-                    elif debt_equity > debt_max:
-                        include_company = False
-                        exclusion_reasons.append(f"Deuda/Equity {debt_equity:.2f} > {debt_max}")
-                
-                if include_company:
-                    filtered_companies.append({
-                        "Ticker": ticker,
-                        "Nombre": company_data.get("Nombre", ticker),
-                        "Precio": f'{company_data.get('Precio Actual', 0):.2f}€' if company_data.get("Precio Actual") else "No disponible",
-                        "PER": round(per, 2) if per else "No disponible",
-                        "Deuda/Equity": round(debt_equity, 2) if debt_equity else "No disponible"
-                    })
-            
-            if filtered_companies:
-                st.success(f"✅ {len(filtered_companies)} de {len(tickers)} empresas cumplen los filtros:")
-                filtered_df = pd.DataFrame(filtered_companies)
-                st.dataframe(filtered_df, use_container_width=True)
-                
-                # Crear lista de tickers filtrados para el selector
-                filtered_tickers = [company["Ticker"] for company in filtered_companies]
-                st.session_state.filtered_tickers = filtered_tickers
-                
-                # Mostrar estadísticas de filtrado
-                st.info(f"📊 Se han excluido {len(tickers) - len(filtered_companies)} empresas que no cumplen los criterios.")
-            else:
-                st.warning("⚠️ Ninguna empresa cumple los filtros especificados")
-                st.info("💡 Prueba a relajar los criterios de filtrado")
-                st.session_state.filtered_tickers = tickers
+        st.session_state.filter_applied = True
+
+# Mostrar resultados del filtrado fuera de las columnas para ocupar toda la pantalla
+if st.session_state.get('filter_applied', False):
+    filtered_companies = []
+    
+    # Usar datos ya cargados en lugar de hacer nuevas llamadas a la API
+    for company_data in results:
+        ticker = company_data["Ticker"]
+        
+        # Obtener PER y Deuda/Equity de los datos ya cargados
+        per = company_data.get("PER", None)
+        debt_equity = company_data.get("Deuda/Equity", None)
+        
+        # Aplicar filtros
+        include_company = True
+        exclusion_reasons = []
+        
+        if per_filter_enabled:
+            if per is None:
+                include_company = False
+                exclusion_reasons.append("PER no disponible")
+            elif per < per_min or per > per_max:
+                include_company = False
+                exclusion_reasons.append(f"PER {per:.2f} fuera del rango [{per_min}-{per_max}]")
+        
+        if debt_filter_enabled:
+            if debt_equity is None:
+                include_company = False
+                exclusion_reasons.append("Deuda/Equity no disponible")
+            elif debt_equity > debt_max:
+                include_company = False
+                exclusion_reasons.append(f"Deuda/Equity {debt_equity:.2f} > {debt_max}")
+        
+        if include_company:
+            filtered_companies.append({
+                "Ticker": ticker,
+                "Nombre": company_data.get("Nombre", ticker),
+                "Precio": f'{company_data.get('Precio Actual', 0):.2f}€' if company_data.get("Precio Actual") else "No disponible",
+                "PER": round(per, 2) if per else "No disponible",
+                "Deuda/Equity": round(debt_equity, 2) if debt_equity else "No disponible"
+            })
+    
+    if filtered_companies:
+        st.success(f"✅ {len(filtered_companies)} de {len(tickers)} empresas cumplen los filtros:")
+        filtered_df = pd.DataFrame(filtered_companies)
+        st.dataframe(filtered_df, use_container_width=True, height=400)
+        
+        # Mostrar estadísticas de filtrado
+        st.info(f"📊 Se han excluido {len(tickers) - len(filtered_companies)} empresas que no cumplen los criterios.")
+    else:
+        st.warning("⚠️ Ninguna empresa cumple los filtros especificados")
+        st.info("💡 Prueba a relajar los criterios de filtrado")
+        st.session_state.filtered_tickers = tickers
 
 # Si no se han aplicado filtros, usar todos los tickers
 if 'filtered_tickers' not in st.session_state:
