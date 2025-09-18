@@ -493,9 +493,9 @@ if st.session_state.get('filter_applied', False):
             filtered_companies.append({
                 "Ticker": ticker,
                 "Nombre": company_data.get("Nombre", ticker),
-                "Precio": f'{company_data.get('Precio Actual', 0):.2f}€' if company_data.get("Precio Actual") else "No disponible",
-                "PER": round(per, 2) if per else "No disponible",
-                "Deuda/Equity": round(debt_equity, 2) if debt_equity else "No disponible"
+                "Precio": f'{company_data.get('Precio Actual', 0):.2f}€' if company_data.get("Precio Actual") else "-",
+                "PER": round(per, 2) if per else "-",
+                "Deuda/Equity": round(debt_equity, 2) if debt_equity else "-"
             })
     
     if filtered_companies:
@@ -506,7 +506,7 @@ if st.session_state.get('filter_applied', False):
         filtered_df = pd.DataFrame(filtered_companies)
         selected_rows = st.dataframe(
             filtered_df, 
-            use_container_width=True, 
+            width='stretch', 
             height=400,
             on_select="rerun",
             selection_mode="single-row"
@@ -516,9 +516,10 @@ if st.session_state.get('filter_applied', False):
         if selected_rows.selection and selected_rows.selection.rows:
             selected_row_index = selected_rows.selection.rows[0]
             selected_company = filtered_companies[selected_row_index]
-            st.session_state.selected_ticker = selected_company['Ticker']
-            st.success(f"✅ Seleccionada: {selected_company['Nombre']} ({selected_company['Ticker']})")
-            st.rerun()
+            # Solo actualizar si es diferente al actual para evitar bucle
+            if st.session_state.get('selected_ticker') != selected_company['Ticker']:
+                st.session_state.selected_ticker = selected_company['Ticker']
+                st.success(f"✅ Seleccionada: {selected_company['Nombre']} ({selected_company['Ticker']})")
         
         # Mostrar estadísticas de filtrado
         st.info(f"📊 Se han excluido {len(tickers) - len(filtered_companies)} empresas que no cumplen los criterios.")
