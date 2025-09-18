@@ -599,11 +599,17 @@ if st.session_state.get('filter_applied', False):
         st.info("💡 Prueba a relajar los criterios de filtrado")
         st.session_state.filtered_tickers = market_filtered_tickers
 
+# Actualizar filtered_tickers cuando cambie el mercado
+if 'previous_market' not in st.session_state or st.session_state.previous_market != selected_market:
+    st.session_state.filtered_tickers = market_filtered_tickers
+    st.session_state.previous_market = selected_market
+    st.session_state.filter_applied = False
+
 # Si no se han aplicado filtros, usar tickers del mercado seleccionado
-if 'filtered_tickers' not in st.session_state:
+if not st.session_state.get('filter_applied', False):
     st.session_state.filtered_tickers = market_filtered_tickers
 
-# Seleccionar empresa (usar tickers filtrados si existen)
+# Seleccionar empresa (usar tickers filtrados si existen, pero siempre respetando el mercado)
 available_tickers = st.session_state.get('filtered_tickers', market_filtered_tickers)
 
 # Crear diccionario de ticker -> nombre para el selector
