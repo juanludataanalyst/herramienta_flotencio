@@ -500,6 +500,28 @@ if st.session_state.get('filter_applied', False):
     
     if filtered_companies:
         st.success(f"✅ {len(filtered_companies)} de {len(tickers)} empresas cumplen los filtros:")
+        
+        # Crear botones para seleccionar empresas
+        st.write("**Haz clic en una empresa para seleccionarla:**")
+        
+        # Crear columnas para mostrar los botones de manera organizada
+        cols_per_row = 3
+        for i in range(0, len(filtered_companies), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for j, company in enumerate(filtered_companies[i:i+cols_per_row]):
+                with cols[j]:
+                    # Crear un botón para cada empresa
+                    button_text = f"{company['Nombre'][:30]}..." if len(company['Nombre']) > 30 else company['Nombre']
+                    button_text += f"\n({company['Ticker']})"
+                    
+                    if st.button(button_text, key=f"select_{company['Ticker']}", use_container_width=True):
+                        # Actualizar la empresa seleccionada
+                        st.session_state.selected_ticker = company['Ticker']
+                        st.success(f"✅ Seleccionada: {company['Nombre']} ({company['Ticker']})")
+                        st.rerun()
+        
+        st.write("---")
+        # Tabla principal como estaba antes
         filtered_df = pd.DataFrame(filtered_companies)
         st.dataframe(filtered_df, use_container_width=True, height=400)
         
@@ -536,8 +558,21 @@ options_list = list(ticker_to_name.values())
 name_to_ticker = {v: k for k, v in ticker_to_name.items()}
 
 # Selector con nombres de empresas
-selected_option = st.selectbox("🏢 Seleccionar Empresa", options_list)
+# Si hay un ticker seleccionado desde los botones, usar ese
+if 'selected_ticker' in st.session_state and st.session_state.selected_ticker in ticker_to_name:
+    default_option = ticker_to_name[st.session_state.selected_ticker]
+    try:
+        default_index = options_list.index(default_option)
+    except ValueError:
+        default_index = 0
+else:
+    default_index = 0
+
+selected_option = st.selectbox("🏢 Seleccionar Empresa", options_list, index=default_index)
 selected_ticker = name_to_ticker[selected_option]
+
+# Actualizar el session_state con la selección actual
+st.session_state.selected_ticker = selected_ticker
 data, history, max_dates, min_dates, june30_dates = get_historical_prices(selected_ticker)
 
 if data and history is not None:
